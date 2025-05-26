@@ -8,7 +8,11 @@ resource ut_rg 'Microsoft.Resources/resourceGroups@2024-11-01' = {
   location: location
 }
 
-resource ut_signalr "Microsoft.'Microsoft.SignalRService/signalR' = {
-  name: 
+
+
+resource ut_signalr 'Microsoft.SignalRService/signalR@2024-10-01-preview' = {
+  name: 'ut_signalr'
+  location: location
+
 
 }
