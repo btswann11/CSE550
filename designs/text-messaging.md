@@ -1,6 +1,6 @@
 # Text Messaging Design
 
-## 🧾 Overview
+## Overview
 
 Our text messaging web app allows two users to communicate in real time while viewing messages in their own preferred languages. This page is focused on how messages are sent and received between users
 
