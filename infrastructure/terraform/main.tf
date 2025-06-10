@@ -26,26 +26,35 @@ resource "azurerm_storage_account" "ut_storage" {
     account_replication_type = "LRS"
 }
 
+resource "azurerm_storage_container" "ut_container" {
+  name                  = "cse550-ut-container"
+  storage_account_id    = azurerm_storage_account.ut_storage.id
+  container_access_type = "private"
+}
+
 resource "azurerm_service_plan" "ut_serviceplan" {
     name                = "cse550-universal-translator-serviceplan"
     location            = azurerm_resource_group.cse550_ut_rg.location
     resource_group_name = azurerm_resource_group.cse550_ut_rg.name
     os_type = "Linux"
-    sku_name = "F1"
+    sku_name = "FC1"
 }
 
-resource "azurerm_linux_function_app" "ut_function" {
-  name                = "example-linux-function-app"
+resource "azurerm_function_app_flex_consumption" "ut_flex_function_app" {
+  name                = "cse550-universal-translator-function-app"
   resource_group_name = azurerm_resource_group.cse550_ut_rg.name
   location            = azurerm_resource_group.cse550_ut_rg.location
+  service_plan_id     = azurerm_service_plan.ut_serviceplan.id
 
-  storage_account_name       = azurerm_storage_account.ut_storage.name
-  storage_account_access_key = azurerm_storage_account.ut_storage.primary_access_key
-  service_plan_id            = azurerm_service_plan.ut_serviceplan.id
-
-  app_settings = {
-    "AzureSignalRConnectionString" = azurerm_signalr_service.ut_signalr.primary_connection_string
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "${azurerm_storage_account.ut_storage.primary_blob_endpoint}${azurerm_storage_container.ut_container.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.ut_storage.primary_access_key
+  runtime_name                = "dotnet-isolated"
+  runtime_version             = "8.0"
+  maximum_instance_count      = 40
+  instance_memory_in_mb       = 1024
+  
+  site_config {
   }
-
-  site_config {}
 }
