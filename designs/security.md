@@ -17,7 +17,7 @@
 
 ```mermaid
 flowchart TD
-    A[User navigates to website] --> B[Show popup with warnings<br/>• Do not share personal info<br/>• Translations may be inaccurate]
+    A[User navigates to website] --> B[Show popup with warnings<br/>• Do not share personal info<br/>• Translations may be inaccurate<br/>• Are you 18 years or older?]
     B --> C{User selects an option}
     C -- Yes --> D[Proceed to login screen]
     C -- No --> E["You must be 18+ to use this app<br/>(user must refresh page to try again)"]
