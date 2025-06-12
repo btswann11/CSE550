@@ -17,10 +17,9 @@
 
 ```mermaid
 flowchart TD
-    A[User navigates to website] --> B[Show popup with warnings<br/>• Do not share personal info<br/>• Translations may be inaccurate<br/>• Are you 18 years or older?]
-    B --> C{User selects an option}
-    C -- Yes --> D[Proceed to login screen]
-    C -- No --> E["You must be 18+ to use this app<br/>(user must refresh page to try again)"]
+    A[User navigates to website] --> B["Show popup with warnings:<br/>• Do not share personal info<br/>• Translations may be inaccurate<br/>• Are you 18 years or older?"]
+    B -- Yes --> C[Proceed to login screen]
+    B -- No --> D["You must be 18+ to use this app<br/>(user must refresh page to try again)"]
 ```
 This lays out the back-end design for a pop-up prompt to warn the user not to share sensitive information. The pop up will also warn the user to independently verify any translations they may find confusing. The pop up should appear when the user first navigates to the website before the user even logs in. The user is then asked whether they are 18 years of age or older. If they are, they are navigated to the login screen. If not, the popup changes to state that the user must be 18 years or older to use the app. This requires a page refresh to try again.
 This back-end design covers FR14 – Warn Sensitive Info Sharing
