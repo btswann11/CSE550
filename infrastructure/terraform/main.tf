@@ -58,3 +58,11 @@ resource "azurerm_function_app_flex_consumption" "ut_flex_function_app" {
   site_config {
   }
 }
+
+resource "azurerm_cognitive_account" "universal_translator" {
+    name                = "cse550-universal-translator"
+    location            = azurerm_resource_group.cse550_ut_rg.location
+    resource_group_name = azurerm_resource_group.cse550_ut_rg.name
+    kind                = "TextTranslation"
+    sku_name            = "F0"  
+}
