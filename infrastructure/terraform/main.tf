@@ -32,6 +32,11 @@ resource "azurerm_storage_container" "ut_container" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_table" "ut_chat_table" {
+  name = "ut-chat-table"
+  storage_account_name = azurerm_storage_account.ut_storage.name
+}
+
 resource "azurerm_service_plan" "ut_serviceplan" {
     name                = "cse550-universal-translator-serviceplan"
     location            = azurerm_resource_group.cse550_ut_rg.location
