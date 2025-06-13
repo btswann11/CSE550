@@ -72,9 +72,9 @@ public class Functions
         };
     }
 
-    [Function(nameof(RemoveFromGroup))]
+    [Function(nameof(AddToGroup))]
     [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRGroupAction AddToGroupGroup([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    public static SignalRGroupAction AddToGroup([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
         return new SignalRGroupAction(SignalRGroupActionType.Add)
         {
