@@ -10,6 +10,8 @@ public class Constants
     public const string ConnectionStringKey = "UT_CHATS_STORAGE_CONNECTION_STRING";
     public const string ChatsTableNameKey = "UT_CHATS_TABLE_NAME";
 
+    public const string SignalRConnectionStringKey = "SIGNALR_CONNECTION_STRING";
+
     public const string TranslationServiceBaseUrlKey = "UT_TRANSLATION_SERVICE_BASE_URI";
     public const string TranslationServiceApiKey = "UT_TRANSLATION_SERVICE_API_KEY";
     public const string TranslationServiceLocationKey = "UT_TRANSLATION_SERVICE_LOCATION";

@@ -114,15 +114,6 @@
         el: '#app',
         data: data,
         methods: {
-          sendNewMessage: function (isToGroup) {
-            if (isToGroup) {
-              connection.invoke("sendToGroup", this.defaultgroup, this.newMessage);
-            }
-            else {
-              connection.invoke("broadcast", this.newMessage);
-            }
-            this.newMessage = '';
-          },
           sendPrivateMessage: function (user) {
             const messageText = prompt('Send private message to ' + user);
 
@@ -130,24 +121,9 @@
               connection.invoke("sendToUser", user, messageText);
             }
           },
-          sendToConnection: function (connectionId) {
-            const messageText = prompt('Send private message to connection ' + connectionId);
-
-            if (messageText) {
-              connection.invoke("sendToConnection", connectionId, messageText);
-            }
-          },
-          addConnectionToGroup: function (connectionId) {
-            confirm('Add connection ' + connectionId + ' to group: ' + this.defaultgroup);
-            connection.invoke("joinGroup", connectionId, this.defaultgroup);
-          },
           addUserToGroup: function (user) {
             r = confirm('Add user ' + user + ' to group: ' + this.defaultgroup);
             connection.invoke("joinUserToGroup", user, this.defaultgroup);
-          },
-          removeConnectionIdFromGroup: function (connectionId) {
-            confirm('Remove connection ' + connectionId + ' from group: ' + this.defaultgroup);
-            connection.invoke("leaveGroup", connectionId, this.defaultgroup);
           },
           removeUserFromGroup: function (user) {
             confirm('Remove user ' + user + ' from group: ' + this.defaultgroup);

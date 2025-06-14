@@ -42,7 +42,6 @@ public class Functions
         var sourceLanguage = chatMembers[user.SourceUserId].Language;
         var targetLanguage = chatMembers[user.TargetUserId].Language;
 
-        // translate message
         var translatedText = await _translationService.TranslateAsync(user.Message, sourceLanguage, targetLanguage);
 
         return new SignalRMessageAction("newMessage")

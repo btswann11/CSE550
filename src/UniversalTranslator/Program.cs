@@ -11,7 +11,8 @@ using UniversalTranslator;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
-
+builder.Configuration["AzureSignalRConnectionString"] = Environment.GetEnvironmentVariable(Constants.SignalRConnectionStringKey)
+    ?? throw new InvalidOperationException("AzureSignalRConnectionString environment variable is not set.");
 builder.Services
        .AddSignalR();
 
