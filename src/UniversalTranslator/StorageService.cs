@@ -10,14 +10,26 @@ using System.Threading.Tasks;
 namespace UniversalTranslator;
 
 
-public class ChatMember : ITableEntity
+public class ChatMember 
+    : ITableEntity
 {
-    public string? PartitionKey { get; set; }
-    public string? RowKey { get; set; }
-    public string? UserId { get; set; }
-    public string? GroupName { get; set; }
-    public string? Language { get; set; }
-    public string? ConnectionId { get; set; }
+    public ChatMember(string groupName, string userId, string language)
+    {
+        PartitionKey = groupName ?? throw new ArgumentNullException(nameof(groupName));
+        RowKey = userId ?? throw new ArgumentNullException(nameof(userId));
+        GroupName = groupName;
+        UserId = userId;
+        Language = language ?? throw new ArgumentNullException(nameof(language));
+        ConnectionId = string.Empty;
+        Timestamp = DateTimeOffset.UtcNow;
+    }
+
+    public string PartitionKey { get; set; }
+    public string RowKey { get; set; }
+    public string UserId { get; set; }
+    public string GroupName { get; set; }
+    public string Language { get; set; }
+    public string ConnectionId { get; set; }
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 }
@@ -56,7 +68,7 @@ public class StorageService
         return await _tableClient.GetEntityAsync<ChatMember>(partitionKey, rowKey);
     }
 
-    public async Task<IEnumerable<ChatMember>> GetChatMembersAsync(string partitionKey)
+    public async Task<IDictionary<string, ChatMember>> GetChatMembersAsync(string partitionKey)
     {
         if (string.IsNullOrWhiteSpace(partitionKey)) throw new ArgumentNullException(nameof(partitionKey));
         
@@ -66,7 +78,7 @@ public class StorageService
         {
             results.Add(member);
         }
-        return results;
+        return results.ToDictionary(m => m.RowKey, m => m);
     }
 
 }

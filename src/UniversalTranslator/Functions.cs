@@ -7,6 +7,7 @@ using System.Text.Json;
 namespace UniversalTranslator;
 
 public record User(string GroupName, string UserId, string Language, string? ConnectionId);
+public record UserMessage(string GroupName, string SourceUserId, string TargetUserId, string Message);
 
 public class Functions
 {
@@ -23,19 +24,32 @@ public class Functions
     public async Task<SignalRMessageAction> SendToUser(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
-        var user = JsonSerializer.Deserialize<User>(await new StreamReader(req.Body).ReadToEndAsync());
+        var body = await new StreamReader(req.Body).ReadToEndAsync();
+        var user = JsonSerializer.Deserialize<UserMessage>(body);
 
-        string body;
-        using (var reader = new StreamReader(req.Body))
+        if (user is null || string.IsNullOrWhiteSpace(user.GroupName) || string.IsNullOrWhiteSpace(user.SourceUserId) || string.IsNullOrWhiteSpace(user.TargetUserId))
         {
-            body = await reader.ReadToEndAsync();
+            throw new ArgumentException("Invalid user data provided.");
         }
+
+        var chatMembers = await _storageService.GetChatMembersAsync(user.GroupName);
+
+        if(chatMembers is null || chatMembers.Count < 1)
+        {
+            throw new InvalidOperationException("No chat members found for the specified group.");
+        }
+
+        var sourceLanguage = chatMembers[user.SourceUserId].Language;
+        var targetLanguage = chatMembers[user.TargetUserId].Language;
+
+        // translate message
+        var translatedText = await _translationService.TranslateAsync(user.Message, sourceLanguage, targetLanguage);
 
         return new SignalRMessageAction("newMessage")
         {
             GroupName = user.GroupName,
-            UserId = user.UserId,
-            Arguments = new[] { body }
+            UserId = user.TargetUserId,
+            Arguments = [translatedText]
         };
     }
 
