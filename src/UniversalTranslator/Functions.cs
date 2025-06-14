@@ -1,86 +1,98 @@
-﻿using Microsoft.Azure.Functions.Worker.Http;
+﻿using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Net;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Newtonsoft.Json;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Text.Json;
 
 namespace UniversalTranslator;
 
+public record User(string GroupName, string UserId, string Language, string? ConnectionId);
+
 public class Functions
 {
-    private readonly ILogger _logger;
+    private readonly StorageService _storageService;
+    private readonly TranslationService _translationService;
 
-    public Functions(ILoggerFactory loggerFactory)
+    public Functions(StorageService storageService, TranslationService translationService)
     {
-        _logger = loggerFactory.CreateLogger<Functions>();
+        _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+        _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
     }
 
-    [Function(nameof(BroadcastToAll))]
-    [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRMessageAction BroadcastToAll([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    [Function("SendToUser")]
+    public async Task<SignalRMessageAction> SendToUser(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
-        using var bodyReader = new StreamReader(req.Body);
+        var user = JsonSerializer.Deserialize<User>(await new StreamReader(req.Body).ReadToEndAsync());
+
+        string body;
+        using (var reader = new StreamReader(req.Body))
+        {
+            body = await reader.ReadToEndAsync();
+        }
+
         return new SignalRMessageAction("newMessage")
         {
-            // broadcast to all the connected clients without specifying any connection, user or group.
-            Arguments = new[] { bodyReader.ReadToEnd() },
+            GroupName = user.GroupName,
+            UserId = user.UserId,
+            Arguments = new[] { body }
         };
     }
 
-    [Function(nameof(SendToUser))]
-    [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRMessageAction SendToUser([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    [Function("AddChatMember")]
+    public async Task<HttpResponseData> AddChatMember(
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        using var bodyReader = new StreamReader(req.Body);
-        return new SignalRMessageAction("newMessage")
+        var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+        var member = JsonSerializer.Deserialize<ChatMember>(requestBody);
+
+        if (member is null)
         {
-            Arguments = new[] { bodyReader.ReadToEnd() },
-            UserId = "userToSend",
-        };
+            var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("Invalid request body.");
+            return badResponse;
+        }
+
+        member.PartitionKey ??= "default";
+        member.RowKey ??= Guid.NewGuid().ToString();
+
+        await _storageService.AddChatMemberAsync(member);
+
+        var response = req.CreateResponse(System.Net.HttpStatusCode.Created);
+        await response.WriteStringAsync("Chat member added.");
+        return response;
     }
 
-    [Function(nameof(SendToGroup))]
-    [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRMessageAction SendToGroup([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    [Function("RemoveChatMember")]
+    public async Task<HttpResponseData> RemoveChatMember(
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "removechatmember/{groupName}/{userId}")] HttpRequestData req,
+        string groupName,
+        string userId)
     {
-        using var bodyReader = new StreamReader(req.Body);
-        return new SignalRMessageAction("newMessage")
+        try
         {
-            Arguments = new[] { bodyReader.ReadToEnd() },
-            GroupName = "groupToSend"
-        };
+            await _storageService.RemoveChatMemberAsync(groupName, userId);
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            await response.WriteStringAsync("Chat member removed.");
+            return response;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            var notFound = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
+            await notFound.WriteStringAsync("Chat member not found.");
+            return notFound;
+        }
     }
 
-    [Function(nameof(RemoveFromGroup))]
-    [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRGroupAction RemoveFromGroup([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    [Function("GetChatMembers")]
+    public async Task<HttpResponseData> GetChatMembers(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "getchatmembers/{groupName}")] HttpRequestData req,
+        string groupName)
     {
-        return new SignalRGroupAction(SignalRGroupActionType.Remove)
-        {
-            GroupName = "group1",
-            UserId = "user1"
-        };
-    }
-
-    [Function(nameof(AddToGroup))]
-    [SignalROutput(HubName = "chat", ConnectionStringSetting = "SignalRConnection")]
-    public static SignalRGroupAction AddToGroup([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
-    {
-        return new SignalRGroupAction(SignalRGroupActionType.Add)
-        {
-            GroupName = "group1",
-            UserId = "user1"
-        };
+        var members = _storageService.GetChatMembersAsync(groupName);
+        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        await response.WriteStringAsync(JsonSerializer.Serialize(members));
+        return response;
     }
 }
 

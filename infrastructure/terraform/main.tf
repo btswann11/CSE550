@@ -33,7 +33,7 @@ resource "azurerm_storage_container" "ut_container" {
 }
 
 resource "azurerm_storage_table" "ut_chat_table" {
-  name = "ut-chat-table"
+  name = "utchattable"
   storage_account_name = azurerm_storage_account.ut_storage.name
 }
 
