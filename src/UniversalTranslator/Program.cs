@@ -13,6 +13,7 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.ConfigureFunctionsWebApplication();
 builder.Configuration["AzureSignalRConnectionString"] = Environment.GetEnvironmentVariable(Constants.SignalRConnectionStringKey)
     ?? throw new InvalidOperationException("AzureSignalRConnectionString environment variable is not set.");
+
 builder.Services
        .AddSignalR();
 
@@ -34,7 +35,6 @@ builder.Services
            client.DefaultRequestHeaders
                      .Add("Ocp-Apim-Subscription-Region", Environment.GetEnvironmentVariable(Constants.TranslationServiceLocationKey)
                      ?? throw new InvalidOperationException($"{Constants.TranslationServiceLocationKey} environment variable is not set."));
-           // Configure other HttpClient settings as needed
        });
 
 
