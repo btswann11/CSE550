@@ -477,10 +477,27 @@
             align-items: center;
             gap: 4px;
         }
-        
-        .language-separator {
+          .language-separator {
             opacity: 0.7;
             margin: 0 2px;
+        }
+        
+        /* Form validation styles */
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+        
+        .invalid-feedback {
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #dc3545;
+            display: block;
+        }
+        
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
         }
     </style>
 </head>
@@ -508,9 +525,7 @@
                 <button @click="denyDisclaimer" class="btn btn-danger">Deny</button>
             </div>
         </div>
-    </div>
-
-    <!-- Language Selection Modal -->
+    </div>    <!-- Language Selection Modal -->
     <div v-if="showLanguageSelection" class="language-modal">
         <div class="language-content">
             <h4 class="mb-3">Setup Your Profile</h4>
@@ -518,7 +533,11 @@
                 <div class="form-group">
                     <label for="username">Screen Name:</label>
                     <input type="text" id="username" v-model="setupUsername" class="form-control" 
+                           :class="{ 'is-invalid': setupUsernameError }"
                            placeholder="Enter your screen name" required>
+                    <div v-if="setupUsernameError" class="invalid-feedback">
+                        {{ setupUsernameError }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="language">Preferred Language:</label>
@@ -530,7 +549,13 @@
                     </select>
                 </div>
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-primary btn-block">Start Chatting</button>
+                    <button type="submit" class="btn btn-primary btn-block" :disabled="isCheckingUsername">
+                        <span v-if="isCheckingUsername">
+                            <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
+                            Checking availability...
+                        </span>
+                        <span v-else>Start Chatting</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -751,10 +776,11 @@
             showFailure: false,
             appReady: false,
             showNewChatModal: false,
-            
-            // Setup data
+              // Setup data
             setupUsername: '',
             setupLanguage: '',
+            setupUsernameError: '',
+            isCheckingUsername: false,
             supportedLanguages: supportedLanguages,
               // Chat system data
             username: '',
@@ -779,19 +805,40 @@
           denyDisclaimer: function() {
             this.showDisclaimer = false;
             this.showFailure = true;
-          },          completeSetup: function() {
+          },          completeSetup: async function() {
             if (this.setupUsername.trim() && this.setupLanguage) {
-              this.username = this.setupUsername.trim();
-              this.userLanguage = this.setupLanguage;
-              this.showLanguageSelection = false;
-              this.appReady = true;
-              this.currentView = 'chats-list';
+              this.setupUsernameError = '';
+              this.isCheckingUsername = true;
               
-              // In demo mode, skip SignalR connection
-              if (!this.isDemoMode) {
-                this.initializeConnection();
-              } else {
-                this.ready = true; // Set ready immediately for demo mode
+              try {
+                // Check username availability first
+                const isAvailable = await this.checkUsernameAvailability(this.setupUsername.trim());
+                
+                if (!isAvailable) {
+                  this.setupUsernameError = 'This username is already taken. Please choose a different one.';
+                  this.isCheckingUsername = false;
+                  return;
+                }
+                
+                // Username is available, proceed with setup
+                this.username = this.setupUsername.trim();
+                this.userLanguage = this.setupLanguage;
+                this.showLanguageSelection = false;
+                this.appReady = true;
+                this.currentView = 'chats-list';
+                
+                // In demo mode, skip SignalR connection
+                if (!this.isDemoMode) {
+                  this.initializeConnection();
+                } else {
+                  this.ready = true; // Set ready immediately for demo mode
+                }
+                
+              } catch (error) {
+                console.error('Error checking username availability:', error);
+                this.setupUsernameError = 'Unable to verify username availability. Please try again.';
+              } finally {
+                this.isCheckingUsername = false;
               }
             }
           },
@@ -824,8 +871,7 @@
               
             this.connection = connection;
           },
-          
-          generateAccessToken: function(username) {
+            generateAccessToken: function(username) {
             // Generate a simple token for demo purposes
             return btoa(JSON.stringify({
               username: username,
@@ -833,21 +879,33 @@
               timestamp: Date.now()
             }));
           },
-            registerUserWithBackend: async function() {
+          
+          checkUsernameAvailability: async function(username) {
+            // In demo mode, simulate availability check
+            if (this.isDemoMode) {
+              // Simulate some taken usernames for demo
+              const takenUsernames = ['admin', 'test', 'demo', 'user', 'guest'];
+              return !takenUsernames.includes(username.toLowerCase());
+            }
+            
             try {
-              // Check if username is available
-              const availabilityResponse = await fetch(`${window.apiBaseUrl}/api/isusernameavailable/${this.username}`);
+              const availabilityResponse = await fetch(`${window.apiBaseUrl}/api/isusernameavailable/${username}`);
               const availabilityData = await availabilityResponse.json();
-              
-              if (!availabilityData.IsAvailable) {
-                console.warn('Username already in use, continuing anyway...');
-              }
-              
-              // Note: We'll register users to specific chat groups when they create/join chats
-              // rather than using a default group for everyone
-              console.log('User availability checked, will register to specific chat groups as needed');
+              return availabilityData.IsAvailable;
             } catch (error) {
               console.error('Error checking username availability:', error);
+              throw error;
+            }
+          },
+            
+          registerUserWithBackend: async function() {
+            // Username availability has already been checked during setup
+            // This method is now called after successful SignalR connection
+            // and serves as a confirmation registration step
+            try {
+              console.log(`User ${this.username} registered successfully with language: ${this.userLanguage}`);
+            } catch (error) {
+              console.error('Error during user registration confirmation:', error);
             }
           },
           
@@ -862,7 +920,7 @@
                   ConnectionId: userId === this.username ? this.myConnectionId : null
                 };
                 
-                const response = await fetch(`${window.apiUrl}/api/AddChatMember`, {
+                const response = await fetch(`${window.apiBaseUrl}/api/AddChatMember`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json'

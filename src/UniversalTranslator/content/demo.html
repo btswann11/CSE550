@@ -477,10 +477,27 @@
             align-items: center;
             gap: 4px;
         }
-        
-        .language-separator {
+          .language-separator {
             opacity: 0.7;
             margin: 0 2px;
+        }
+        
+        /* Form validation styles */
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+        
+        .invalid-feedback {
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #dc3545;
+            display: block;
+        }
+        
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
         }
     </style>
 </head>
@@ -508,9 +525,7 @@
                 <button @click="denyDisclaimer" class="btn btn-danger">Deny</button>
             </div>
         </div>
-    </div>
-
-    <!-- Language Selection Modal -->
+    </div>    <!-- Language Selection Modal -->
     <div v-if="showLanguageSelection" class="language-modal">
         <div class="language-content">
             <h4 class="mb-3">Setup Your Profile</h4>
@@ -518,7 +533,11 @@
                 <div class="form-group">
                     <label for="username">Screen Name:</label>
                     <input type="text" id="username" v-model="setupUsername" class="form-control" 
+                           :class="{ 'is-invalid': setupUsernameError }"
                            placeholder="Enter your screen name" required>
+                    <div v-if="setupUsernameError" class="invalid-feedback">
+                        {{ setupUsernameError }}
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="language">Preferred Language:</label>
@@ -530,7 +549,13 @@
                     </select>
                 </div>
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-primary btn-block">Start Chatting</button>
+                    <button type="submit" class="btn btn-primary btn-block" :disabled="isCheckingUsername">
+                        <span v-if="isCheckingUsername">
+                            <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
+                            Checking availability...
+                        </span>
+                        <span v-else>Start Chatting</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -753,10 +778,11 @@
             showFailure: false,
             appReady: false,
             showNewChatModal: false,
-            
-            // Setup data
+              // Setup data
             setupUsername: '',
             setupLanguage: '',
+            setupUsernameError: '',
+            isCheckingUsername: false,
             supportedLanguages: supportedLanguages,
             
             // Chat system data
@@ -889,26 +915,56 @@
             this.showDisclaimer = false;
             this.showFailure = true;
           },
-          
-          completeSetup: function() {
+            completeSetup: async function() {
             if (this.setupUsername.trim() && this.setupLanguage) {
-              this.username = this.setupUsername.trim();
-              this.userLanguage = this.setupLanguage;
-              this.showLanguageSelection = false;
-              this.appReady = true;
-              this.currentView = 'chats-list';
-                // Update demo chats with the new username
-              this.updateDemoChatsWithUsername();
+              this.setupUsernameError = '';
+              this.isCheckingUsername = true;
               
-              // Add a welcome message showing the user's language
-              const languageName = this.supportedLanguages.find(lang => lang.code === this.userLanguage).name;
-              console.log(`Demo: Welcome ${this.username}! Language set to ${languageName} (${this.userLanguage})`);
-              
-              // In demo mode, skip SignalR connection
-              if (!this.isDemoMode) {
-                this.initializeConnection();
+              try {
+                // Check username availability first
+                const isAvailable = await this.checkUsernameAvailability(this.setupUsername.trim());
+                
+                if (!isAvailable) {
+                  this.setupUsernameError = 'This username is already taken. Please choose a different one.';
+                  this.isCheckingUsername = false;
+                  return;
+                }
+                
+                // Username is available, proceed with setup
+                this.username = this.setupUsername.trim();
+                this.userLanguage = this.setupLanguage;
+                this.showLanguageSelection = false;
+                this.appReady = true;
+                this.currentView = 'chats-list';
+                  // Update demo chats with the new username
+                this.updateDemoChatsWithUsername();
+                
+                // Add a welcome message showing the user's language
+                const languageName = this.supportedLanguages.find(lang => lang.code === this.userLanguage).name;
+                console.log(`Demo: Welcome ${this.username}! Language set to ${languageName} (${this.userLanguage})`);
+                
+                // In demo mode, skip SignalR connection
+                if (!this.isDemoMode) {
+                  this.initializeConnection();
+                }
+                
+              } catch (error) {
+                console.error('Error checking username availability:', error);
+                this.setupUsernameError = 'Unable to verify username availability. Please try again.';
+              } finally {
+                this.isCheckingUsername = false;
               }
-            }
+            }          },
+          
+          checkUsernameAvailability: async function(username) {
+            // In demo mode, always simulate availability check
+            // Simulate some taken usernames for demo
+            const takenUsernames = ['admin', 'test', 'demo', 'user', 'guest'];
+            
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            return !takenUsernames.includes(username.toLowerCase());
           },
           
           // Backend integration methods (for live mode)
