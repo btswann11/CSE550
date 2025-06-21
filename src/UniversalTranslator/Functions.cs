@@ -81,7 +81,10 @@ public class Functions
             var sourceLanguage = chatMembers[user.SourceUserId].Language;
             var targetLanguage = chatMembers[user.TargetUserId].Language;
 
-            var translatedText = await _translationService.TranslateAsync(user.Message, sourceLanguage, targetLanguage);
+            // If source and target languages are the same, no translation is needed
+            var translatedText = sourceLanguage == targetLanguage
+            ? user.Message
+            : await _translationService.TranslateAsync(user.Message, sourceLanguage, targetLanguage);
 
             // Create the response data
             var responseData = new
