@@ -1,7 +1,7 @@
-﻿<html>
+<html>
 
 <head>
-    <title>Serverless Chat</title>
+    <title>Serverless Chat - Demo</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
     <script>
     window.apiBaseUrl = window.location.origin;
@@ -550,7 +550,10 @@
         <div class="row">
             <div class="col">
                 <div class="chats-list-container">
-                    <h3 class="mb-4">Your Chats</h3>
+                    <h3 class="mb-4">Your Chats - Demo Mode</h3>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Demo Mode:</strong> This is a preview of the multi-chat UI. Click on any chat to see the conversation.
+                    </div>
                     <div v-if="Object.keys(chats).length === 0" class="text-center text-muted py-5">
                         <h5>No chats yet</h5>
                         <p>Start a new conversation by clicking the + button</p>
@@ -578,12 +581,10 @@
     </div>
 
     <!-- Individual Chat Screen -->
-    <div v-if="appReady && currentView === 'chat'" class="container-fluid d-flex flex-column chat-main-container" style="height: 100vh;">
-        <!-- Chat Header -->
+    <div v-if="appReady && currentView === 'chat'" class="container-fluid d-flex flex-column chat-main-container" style="height: 100vh;">        <!-- Chat Header -->
         <div class="chat-header">
-            <button class="back-button" @click="goToChatsListing">←</button>
-            <div class="chat-header-title">
-                {{ getCurrentChatDisplayName() }}
+            <button class="back-button" @click="goToChatsListing">←</button>            <div class="chat-header-title">
+                {{ getCurrentChatDisplayName() }} - Demo
                 <span class="badge language-badge-header ml-2">
                     <span class="language-indicator">{{ getCurrentChatLanguagesDisplay() }}</span>
                 </span>
@@ -593,13 +594,14 @@
         <div class="row" v-if="!ready" style="flex: 1;">
             <div class="col">
                 <div class="d-flex align-items-center justify-content-center h-100">
-                    <div>Connecting...</div>
+                    <div>Loading...</div>
                 </div>
             </div>
         </div>
         
         <div v-if="ready" class="row" style="flex: 1; overflow: hidden;">
-            <div class="col" style="display: flex; flex-direction: column; height: 100%;">                <!-- Messages area -->
+            <div class="col" style="display: flex; flex-direction: column; height: 100%;">
+                <!-- Messages area -->
                 <div class="messages-container" style="flex: 1; overflow-y: auto; padding: 20px; overflow-x: hidden;">
                     <transition-group name="slide-fade" tag="div">
                         <div v-for="message in getCurrentChatMessages()" v-bind:key="message.id" 
@@ -616,7 +618,8 @@
                                           style="font-size: 0.65rem; opacity: 0.9;">
                                       → {{ getLanguageCode(message.TargetLanguage) }}
                                     </span>
-                                </div>                                <!-- For sent messages: show original text first, then translated text below -->
+                                </div>
+                                  <!-- For sent messages: show original text first, then translated text below -->
                                 <div v-if="isMyMessage(message)">
                                     <div class="message-text">
                                         {{ message.OriginalText || message.Text || message.text }}
@@ -627,7 +630,7 @@
                                         {{ message.TranslatedText }}
                                     </div>
                                     <!-- Message Status for sent messages -->
-                                    <div :class="['message-status', message.status || 'sending']">
+                                    <div v-if="isMyMessage(message)" :class="['message-status', message.status || 'sending']">
                                         <span v-if="message.status === 'sending'" class="status-icon">⏳</span>
                                         <span v-if="message.status === 'delivered'" class="status-icon">✓</span>
                                         <span v-if="message.status === 'failed'" class="status-icon">✗</span>
@@ -641,7 +644,8 @@
                                     <div v-if="message.OriginalText && message.TranslatedText && message.OriginalText !== message.TranslatedText" class="message-original">
                                         {{ message.OriginalText }}
                                     </div>
-                                      <!-- Show the main message text (translated or original) -->
+                                    
+                                    <!-- Show the main message text (translated or original) -->
                                     <div class="message-text">
                                         {{ message.TranslatedText || message.Text || message.text }}
                                     </div>
@@ -657,7 +661,7 @@
     <!-- New Chat Modal -->
     <div v-if="showNewChatModal" class="new-chat-modal">
         <div class="new-chat-content">
-            <h4 class="mb-3">Start New Chat</h4>
+            <h4 class="mb-3">Start New Chat - Demo</h4>
             <form @submit.prevent="createNewChat">
                 <div class="form-group">
                     <label for="newChatUser">Enter username to chat with:</label>
@@ -689,9 +693,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/axios@0.18.0/dist/axios.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/crypto-js.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/enc-base64.js"></script>        <script>
+        <script>
       // Azure Translator supported languages
       const supportedLanguages = [
         { code: 'af', name: 'Afrikaans' },
@@ -756,16 +758,124 @@
             setupUsername: '',
             setupLanguage: '',
             supportedLanguages: supportedLanguages,
-              // Chat system data
-            username: '',
+            
+            // Chat system data
+            username: 'DemoUser',
             userLanguage: 'en',
             currentView: 'chats-list', // 'chats-list' or 'chat'
-            currentChatId: null,
-            chats: {}, // Object to store all chat conversations
-            newMessage: '',
-            newChatUsername: '',            myConnectionId: '',
-            ready: false,
-            messageCounter: 0,
+            currentChatId: null,            chats: {
+              'Alice_DemoUser': {
+                participants: ['DemoUser', 'Alice'],
+                messages: [
+                  {
+                    id: 1,
+                    Sender: 'Alice',
+                    Text: 'Hello! How are you doing today?',
+                    OriginalText: 'Bonjour ! Comment allez-vous aujourd\'hui ?',
+                    TranslatedText: 'Hello! How are you doing today?',
+                    SourceLanguage: 'fr',
+                    TargetLanguage: 'en',
+                    timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+                    isTranslated: true
+                  },                  {
+                    id: 2,
+                    Sender: 'DemoUser',
+                    Text: 'I\'m doing great! Thanks for asking. How about you?',
+                    OriginalText: 'I\'m doing great! Thanks for asking. How about you?',
+                    TranslatedText: '¡Me va muy bien! Gracias por preguntar. ¿Y tú qué tal?',
+                    SourceLanguage: 'en',
+                    TargetLanguage: 'es',
+                    timestamp: new Date(Date.now() - 3500000),
+                    isTranslated: true,
+                    status: 'delivered'
+                  },
+                  {
+                    id: 3,
+                    Sender: 'Alice',
+                    Text: 'I\'m good too! This new chat system looks really nice.',
+                    OriginalText: 'Je vais bien aussi ! Ce nouveau système de chat a l\'air vraiment sympa.',
+                    TranslatedText: 'I\'m good too! This new chat system looks really nice.',
+                    SourceLanguage: 'fr',
+                    TargetLanguage: 'en',
+                    timestamp: new Date(Date.now() - 3000000),
+                    isTranslated: true
+                  }
+                ],
+                unread: 0,
+                lastActivity: new Date(Date.now() - 3000000)
+              },
+              'Bob_DemoUser': {
+                participants: ['DemoUser', 'Bob'],
+                messages: [
+                  {
+                    id: 4,
+                    Sender: 'Bob',
+                    Text: 'Hey! Are we still on for the meeting tomorrow?',
+                    OriginalText: '¡Hola! ¿Seguimos en pie para la reunión de mañana?',
+                    TranslatedText: 'Hey! Are we still on for the meeting tomorrow?',
+                    SourceLanguage: 'es',
+                    TargetLanguage: 'en',
+                    timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
+                    isTranslated: true
+                  },                  {
+                    id: 5,
+                    Sender: 'DemoUser',
+                    Text: 'Yes, absolutely! See you at 2 PM.',
+                    OriginalText: 'Yes, absolutely! See you at 2 PM.',
+                    TranslatedText: '¡Sí, por supuesto! Te veo a las 2 PM.',
+                    SourceLanguage: 'en',
+                    TargetLanguage: 'es',
+                    timestamp: new Date(Date.now() - 1700000),
+                    isTranslated: true,
+                    status: 'delivered'
+                  },                  {
+                    id: 6,
+                    Sender: 'Bob',
+                    Text: 'Perfect! Looking forward to it.',
+                    OriginalText: '¡Perfecto! Tengo muchas ganas.',
+                    TranslatedText: 'Perfect! Looking forward to it.',
+                    SourceLanguage: 'es',
+                    TargetLanguage: 'en',
+                    timestamp: new Date(Date.now() - 1600000),
+                    isTranslated: true
+                  },
+                  {
+                    id: 8,
+                    Sender: 'DemoUser',
+                    Text: 'Sounds like a plan!',
+                    OriginalText: 'Sounds like a plan!',
+                    TranslatedText: '¡Suena como un plan!',
+                    SourceLanguage: 'en',
+                    TargetLanguage: 'es',
+                    timestamp: new Date(Date.now() - 1590000),
+                    isTranslated: true,
+                    status: 'failed'
+                  }                ],
+                unread: 1,
+                lastActivity: new Date(Date.now() - 1590000)
+              },
+              'Charlie_DemoUser': {
+                participants: ['DemoUser', 'Charlie'],
+                messages: [
+                  {
+                    id: 7,
+                    Sender: 'Charlie',
+                    Text: 'Check out this new feature!',
+                    OriginalText: 'Schau dir diese neue Funktion an!',
+                    TranslatedText: 'Check out this new feature!',
+                    SourceLanguage: 'de',
+                    TargetLanguage: 'en',
+                    timestamp: new Date(Date.now() - 600000), // 10 minutes ago
+                    isTranslated: true
+                  }
+                ],
+                unread: 1,
+                lastActivity: new Date(Date.now() - 600000)
+              }
+            },            newMessage: '',
+            newChatUsername: '',
+            myConnectionId: 'demo-connection',            ready: true,
+            messageCounter: 9,
             connection: null,
             isDemoMode: true // Flag to indicate demo mode vs live mode
           };
@@ -775,30 +885,35 @@
             this.showDisclaimer = false;
             this.showLanguageSelection = true;
           },
-          
-          denyDisclaimer: function() {
+            denyDisclaimer: function() {
             this.showDisclaimer = false;
             this.showFailure = true;
-          },          completeSetup: function() {
+          },
+          
+          completeSetup: function() {
             if (this.setupUsername.trim() && this.setupLanguage) {
               this.username = this.setupUsername.trim();
               this.userLanguage = this.setupLanguage;
               this.showLanguageSelection = false;
               this.appReady = true;
               this.currentView = 'chats-list';
+                // Update demo chats with the new username
+              this.updateDemoChatsWithUsername();
+              
+              // Add a welcome message showing the user's language
+              const languageName = this.supportedLanguages.find(lang => lang.code === this.userLanguage).name;
+              console.log(`Demo: Welcome ${this.username}! Language set to ${languageName} (${this.userLanguage})`);
               
               // In demo mode, skip SignalR connection
               if (!this.isDemoMode) {
                 this.initializeConnection();
-              } else {
-                this.ready = true; // Set ready immediately for demo mode
               }
             }
           },
           
+          // Backend integration methods (for live mode)
           initializeConnection: function() {
             const apiBaseUrl = window.location.origin;
-            const isAdmin = false; // You can add admin selection to the setup if needed
             
             const connection = new signalR.HubConnectionBuilder()
               .withUrl(apiBaseUrl + '/api', {
@@ -814,7 +929,8 @@
             connection.on('newConnection', this.onNewConnection);
             connection.onclose(() => console.log('disconnected'));
             
-            console.log('connecting...');            connection.start()
+            console.log('connecting...');
+            connection.start()
               .then(() => {
                 this.ready = true;
                 console.log('connected!');
@@ -850,37 +966,74 @@
               console.error('Error checking username availability:', error);
             }
           },
-          
-          registerUsersToChat: async function(groupName, userIds) {
-            try {
-              // Register each user to the chat group
-              for (const userId of userIds) {
-                const chatMember = {
-                  GroupName: groupName,
-                  UserId: userId,
-                  Language: userId === this.username ? this.userLanguage : 'en', // Default to 'en' for other users
-                  ConnectionId: userId === this.username ? this.myConnectionId : null
-                };
-                
-                const response = await fetch(`${window.apiUrl}/api/AddChatMember`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(chatMember)
-                });
-                
-                if (response.ok) {
-                  console.log(`User ${userId} registered to chat group ${groupName}`);
-                } else if (response.status === 409) {
-                  console.log(`User ${userId} already exists in chat group ${groupName}`);
-                } else {
-                  console.error(`Failed to register user ${userId} to chat group ${groupName}`);
-                }
-              }
-            } catch (error) {
-              console.error('Error registering users to chat group:', error);
+            onNewMessage: function(messageData) {
+            // Handle incoming translated messages from SignalR
+            // messageData now contains: { OriginalText, TranslatedText, SourceUserId, TargetUserId, SourceLanguage, TargetLanguage }
+            
+            const message = {
+              id: this.messageCounter++,
+              Sender: messageData.SourceUserId || messageData.sender || messageData.Sender,
+              Text: messageData.TranslatedText || messageData.text || messageData.Text || messageData,
+              OriginalText: messageData.OriginalText,
+              TranslatedText: messageData.TranslatedText,
+              SourceLanguage: messageData.SourceLanguage,
+              TargetLanguage: messageData.TargetLanguage,
+              timestamp: new Date(),
+              isTranslated: true
+            };
+            
+            // Determine which chat this message belongs to
+            const sender = message.Sender;
+            const chatId = this.generateChatId(this.username, sender);
+            
+            // Create chat if it doesn't exist
+            if (!this.chats[chatId]) {
+              this.chats[chatId] = {
+                participants: [this.username, sender],
+                messages: [],
+                unread: 0,
+                lastActivity: new Date()
+              };
             }
+            
+            // Add message to appropriate chat
+            this.chats[chatId].messages.push(message);
+            this.chats[chatId].lastActivity = new Date();
+            
+            // If not viewing this chat, increment unread count
+            if (this.currentView !== 'chat' || this.currentChatId !== chatId) {
+              this.chats[chatId].unread = (this.chats[chatId].unread || 0) + 1;
+            }
+            
+            this.$nextTick(() => {
+              if (this.currentChatId === chatId) {
+                this.scrollToBottom();
+              }
+            });
+          },          onNewConnection: function(connectionInfo) {
+            console.log('New connection:', connectionInfo);
+            // Handle new user connections if needed
+          },
+          
+          updateDemoChatsWithUsername: function() {
+            // Update existing demo chats to use the actual username instead of 'DemoUser'
+            const oldChats = this.chats;
+            this.chats = {};
+            
+            Object.keys(oldChats).forEach(chatId => {
+              const chat = oldChats[chatId];
+              const otherUser = chat.participants.find(p => p !== 'DemoUser');
+              const newChatId = this.generateChatId(this.username, otherUser);
+              
+              // Update participants and messages
+              chat.participants = [this.username, otherUser];
+              chat.messages.forEach(message => {
+                if (message.Sender === 'DemoUser') {
+                  message.Sender = this.username;
+                }
+              });
+                this.chats[newChatId] = chat;
+            });
           },
           
           // Chat management methods
@@ -924,6 +1077,38 @@
             }
           },
           
+          registerUsersToChat: async function(groupName, userIds) {
+            try {
+              // Register each user to the chat group
+              for (const userId of userIds) {
+                const chatMember = {
+                  GroupName: groupName,
+                  UserId: userId,
+                  Language: userId === this.username ? this.userLanguage : 'en', // Default to 'en' for other users
+                  ConnectionId: userId === this.username ? this.myConnectionId : null
+                };
+                
+                const response = await fetch(`${window.apiBaseUrl}/api/AddChatMember`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(chatMember)
+                });
+                
+                if (response.ok) {
+                  console.log(`User ${userId} registered to chat group ${groupName}`);
+                } else if (response.status === 409) {
+                  console.log(`User ${userId} already exists in chat group ${groupName}`);
+                } else {
+                  console.error(`Failed to register user ${userId} to chat group ${groupName}`);
+                }
+              }
+            } catch (error) {
+              console.error('Error registering users to chat group:', error);
+            }
+          },
+          
           generateChatId: function(user1, user2) {
             // Generate consistent chat ID regardless of user order
             return [user1, user2].sort().join('_');
@@ -932,6 +1117,53 @@
           getChatDisplayName: function(chat) {
             // Return the other participant's name
             return chat.participants.find(p => p !== this.username) || 'Unknown';
+          },          getChatLanguages: function(chat) {
+            // Get unique source languages used in this chat
+            const sourceLanguages = new Set();
+            
+            // Add user's language
+            sourceLanguages.add(this.userLanguage);
+            
+            // Add source languages from translated messages (original languages people wrote in)
+            chat.messages.forEach(message => {
+              if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
+                sourceLanguages.add(message.SourceLanguage);
+              }
+            });
+            
+            // Convert language codes to names
+            const languageNames = Array.from(sourceLanguages).map(code => {
+              const lang = this.supportedLanguages.find(l => l.code === code);
+              return lang ? lang.name.split(' ')[0] : code.toUpperCase(); // Use first word of language name
+            });
+            
+            return languageNames.join(' ↔ ');
+          },
+            getChatLanguagesDisplay: function(chat) {
+            // Enhanced language display - show unique source languages used in conversation
+            const sourceLanguages = new Set();
+            
+            // Add user's language as one of the languages
+            sourceLanguages.add(this.userLanguage);
+            
+            // Add source languages from translated messages (these are the original languages people wrote in)
+            chat.messages.forEach(message => {
+              if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
+                sourceLanguages.add(message.SourceLanguage);
+              }
+            });
+            
+            // If no other languages detected, this is likely a single-language chat
+            if (sourceLanguages.size === 1) {
+              return this.getLanguageCode(this.userLanguage);
+            }
+            
+            // Convert language codes to short names
+            const languageNames = Array.from(sourceLanguages).map(code => {
+              return this.getLanguageCode(code);
+            });
+            
+            return languageNames.join(' ⟷ ');
           },
           
           getCurrentChatDisplayName: function() {
@@ -939,6 +1171,19 @@
               return this.getChatDisplayName(this.chats[this.currentChatId]);
             }
             return 'Chat';
+          },
+            getCurrentChatLanguages: function() {
+            if (this.currentChatId && this.chats[this.currentChatId]) {
+              return this.getChatLanguages(this.chats[this.currentChatId]);
+            }
+            return '';
+          },
+          
+          getCurrentChatLanguagesDisplay: function() {
+            if (this.currentChatId && this.chats[this.currentChatId]) {
+              return this.getChatLanguagesDisplay(this.chats[this.currentChatId]);
+            }
+            return '';
           },
           
           getCurrentChatMessages: function() {
@@ -974,7 +1219,8 @@
           },          sendNewMessage: function() {
             if (this.newMessage.trim() && this.currentChatId) {
               const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-                if (this.isDemoMode) {                // Demo mode - local simulation
+              
+              if (this.isDemoMode) {                // Demo mode - local simulation
                 const message = {
                   id: this.messageCounter++,
                   Sender: this.username,
@@ -1064,8 +1310,7 @@
                 },
                 body: JSON.stringify(userMessage)
               });
-              
-              if (response.ok) {
+                if (response.ok) {
                 // Parse the response to get translation details
                 const translationResult = await response.json();
                 console.log('Message sent and translated:', translationResult);
@@ -1096,8 +1341,7 @@
                     this.$forceUpdate();
                   }
                 }
-              }
-            } catch (error) {
+              }            } catch (error) {
               console.error('Error sending message via backend:', error);
               // Mark message as failed on network error
               if (this.currentChatId && this.chats[this.currentChatId]) {
@@ -1134,8 +1378,7 @@
               
               this.chats[this.currentChatId].messages.push(responseMessage);
               this.chats[this.currentChatId].lastActivity = new Date();
-              
-              // If not viewing this chat, increment unread count
+                // If not viewing this chat, increment unread count
               if (this.currentView !== 'chat' || this.currentChatId !== this.currentChatId) {
                 this.chats[this.currentChatId].unread = (this.chats[this.currentChatId].unread || 0) + 1;
               }
@@ -1144,107 +1387,6 @@
                 this.scrollToBottom();
               });
             }
-          },          onNewMessage: function(messageData) {
-            // Handle incoming translated messages from SignalR
-            // messageData now contains: { OriginalText, TranslatedText, SourceUserId, TargetUserId, SourceLanguage, TargetLanguage }
-            
-            const message = {
-              id: this.messageCounter++,
-              Sender: messageData.SourceUserId || messageData.sender || messageData.Sender,
-              Text: messageData.TranslatedText || messageData.text || messageData.Text || messageData,
-              OriginalText: messageData.OriginalText,
-              TranslatedText: messageData.TranslatedText,
-              SourceLanguage: messageData.SourceLanguage,
-              TargetLanguage: messageData.TargetLanguage,
-              timestamp: new Date(),
-              isTranslated: true
-            };
-            
-            // Determine which chat this message belongs to
-            const sender = message.Sender;
-            let chatId;
-            
-            if (sender === this.username) {
-              // This is our own message, find the chat based on current context
-              chatId = this.currentChatId;
-            } else {
-              // This is a message from another user
-              chatId = this.generateChatId(this.username, sender);
-              
-              // Create chat if it doesn't exist
-              if (!this.chats[chatId]) {
-                this.chats[chatId] = {
-                  participants: [this.username, sender],
-                  messages: [],
-                  unread: 0,
-                  lastActivity: new Date()
-                };
-              }
-            }
-            
-            if (chatId && this.chats[chatId]) {
-              this.chats[chatId].messages.push(message);
-              this.chats[chatId].lastActivity = new Date();
-              
-              // If not viewing this chat, increment unread count
-              if (this.currentView !== 'chat' || this.currentChatId !== chatId) {
-                this.chats[chatId].unread = (this.chats[chatId].unread || 0) + 1;
-              }
-              
-              this.$nextTick(() => {
-                if (this.currentChatId === chatId) {
-                  this.scrollToBottom();
-                }
-              });
-            }          },
-          
-          onNewConnection: function(connectionInfo) {
-            console.log('New connection:', connectionInfo);
-            this.myConnectionId = connectionInfo.ConnectionId || connectionInfo.connectionId;
-            console.log('Connected with ID:', this.myConnectionId);
-          },
-          
-          generateAccessToken: function(userName) {
-            const header = {
-              "alg": "HS256",
-              "typ": "JWT"
-            };
-
-            const stringifiedHeader = CryptoJS.enc.Utf8.parse(JSON.stringify(header));
-            const encodedHeader = this.base64url(stringifiedHeader);
-
-            // customize your JWT token payload here
-            const tokenData = {
-              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": userName,
-              "exp": 1699819025,
-              'admin': false,
-              'language': this.userLanguage
-            };
-
-            const stringifiedData = CryptoJS.enc.Utf8.parse(JSON.stringify(tokenData));
-            const encodedData = this.base64url(stringifiedData);
-
-            const token = encodedHeader + "." + encodedData;
-            const secret = "myfunctionauthtest"; // do not expose your secret here
-
-            const signature = CryptoJS.HmacSHA256(token, secret);
-            const encodedSignature = this.base64url(signature);
-
-            return token + "." + encodedSignature;
-          },
-          
-          base64url: function(source) {
-            // Encode in classical base64
-            let encodedSource = CryptoJS.enc.Base64.stringify(source);
-
-            // Remove padding equal characters
-            encodedSource = encodedSource.replace(/=+$/, '');
-
-            // Replace characters according to base64url specifications
-            encodedSource = encodedSource.replace(/\+/g, '-');
-            encodedSource = encodedSource.replace(/\//g, '_');
-
-            return encodedSource;
           },
             isMyMessage: function(message) {
             return (message.Sender || message.sender) === this.username;
@@ -1281,73 +1423,14 @@
               default: return 'Sending...';
             }
           },
-            scrollToBottom: function() {
+          
+          scrollToBottom: function() {
             const messagesContainer = document.querySelector('.messages-container') || 
                                     document.querySelector('[style*="overflow-y: auto"]');
             if (messagesContainer) {
               messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
-          },          getChatLanguages: function(chat) {
-            // Get unique source languages used in this chat
-            const sourceLanguages = new Set();
-            
-            // Add user's language
-            sourceLanguages.add(this.userLanguage);
-            
-            // Add source languages from translated messages (original languages people wrote in)
-            chat.messages.forEach(message => {
-              if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
-                sourceLanguages.add(message.SourceLanguage);
-              }
-            });
-            
-            // Convert language codes to names
-            const languageNames = Array.from(sourceLanguages).map(code => {
-              const lang = this.supportedLanguages.find(l => l.code === code);
-              return lang ? lang.name.split(' ')[0] : code.toUpperCase(); // Use first word of language name
-            });
-            
-            return languageNames.join(' ↔ ');
-          },
-            getChatLanguagesDisplay: function(chat) {
-            // Enhanced language display - show unique source languages used in conversation
-            const sourceLanguages = new Set();
-            
-            // Add user's language as one of the languages
-            sourceLanguages.add(this.userLanguage);
-            
-            // Add source languages from translated messages (these are the original languages people wrote in)
-            chat.messages.forEach(message => {
-              if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
-                sourceLanguages.add(message.SourceLanguage);
-              }
-            });
-            
-            // If no other languages detected, this is likely a single-language chat
-            if (sourceLanguages.size === 1) {
-              return this.getLanguageCode(this.userLanguage);
-            }
-            
-            // Convert language codes to short names
-            const languageNames = Array.from(sourceLanguages).map(code => {
-              return this.getLanguageCode(code);
-            });
-            
-            return languageNames.join(' ⟷ ');
-          },
-            getCurrentChatLanguages: function() {
-            if (this.currentChatId && this.chats[this.currentChatId]) {
-              return this.getChatLanguages(this.chats[this.currentChatId]);
-            }
-            return '';
-          },
-          
-          getCurrentChatLanguagesDisplay: function() {
-            if (this.currentChatId && this.chats[this.currentChatId]) {
-              return this.getChatLanguagesDisplay(this.chats[this.currentChatId]);
-            }
-            return '';
-          },
+          }
         },
         
         mounted: function() {

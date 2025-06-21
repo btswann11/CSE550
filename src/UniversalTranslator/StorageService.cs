@@ -56,7 +56,7 @@ public class StorageService
     {
         if (string.IsNullOrWhiteSpace(partitionKey)) throw new ArgumentNullException(nameof(partitionKey));
         if (string.IsNullOrWhiteSpace(rowKey)) throw new ArgumentNullException(nameof(rowKey));
-        
+
         await _tableClient.DeleteEntityAsync(partitionKey, rowKey);
     }
 
@@ -64,14 +64,14 @@ public class StorageService
     {
         if (string.IsNullOrWhiteSpace(partitionKey)) throw new ArgumentNullException(nameof(partitionKey));
         if (string.IsNullOrWhiteSpace(rowKey)) throw new ArgumentNullException(nameof(rowKey));
-        
+
         return await _tableClient.GetEntityAsync<ChatMember>(partitionKey, rowKey);
     }
 
     public async Task<IDictionary<string, ChatMember>> GetChatMembersAsync(string partitionKey)
     {
         if (string.IsNullOrWhiteSpace(partitionKey)) throw new ArgumentNullException(nameof(partitionKey));
-        
+
         var query = _tableClient.QueryAsync<ChatMember>(member => member.PartitionKey == partitionKey);
         var results = new List<ChatMember>();
         await foreach (var member in query)
@@ -81,4 +81,17 @@ public class StorageService
         return results.ToDictionary(m => m.RowKey, m => m);
     }
 
+    public async Task<bool> IsUserNameAvailableAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) throw new ArgumentNullException(nameof(userId));
+
+        var query = _tableClient.QueryAsync<ChatMember>(member => member.RowKey == userId);
+        var results = new List<ChatMember>();
+        await foreach (var member in query)
+        {
+            results.Add(member);
+        }
+
+        return results.Count == 0;
+    }
 }
