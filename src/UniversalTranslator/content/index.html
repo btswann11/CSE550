@@ -1088,13 +1088,14 @@
             return date.toLocaleDateString();
           },          sendNewMessage: function() {
             if (this.newMessage.trim() && this.currentChatId) {
+              const messageText = this.newMessage.trim(); // Store the message text before clearing
               const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
                 if (this.isDemoMode) {                // Demo mode - local simulation
                 const message = {
                   id: this.messageCounter++,
                   Sender: this.username,
-                  Text: this.newMessage,
-                  OriginalText: this.newMessage,
+                  Text: messageText,
+                  OriginalText: messageText,
                   TranslatedText: null, // Pre-define for Vue reactivity
                   SourceLanguage: null, // Pre-define for Vue reactivity
                   TargetLanguage: null, // Pre-define for Vue reactivity
@@ -1105,6 +1106,10 @@
                 
                 this.chats[this.currentChatId].messages.push(message);
                 this.chats[this.currentChatId].lastActivity = new Date();
+                
+                // Clear input and scroll immediately
+                this.newMessage = '';
+                this.scrollToBottom();
                   // Simulate translation response in demo mode
                 setTimeout(() => {
                   // Get the target user's language (for demo, simulate different users having different languages)
@@ -1112,7 +1117,7 @@
                   const targetLanguage = this.getTargetUserLanguage(otherUser);
                   
                   // Simulate translation result based on target language
-                  const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
+                  const translatedText = this.simulateTranslation(messageText, this.userLanguage, targetLanguage);
                   
                   // Update the message with translation
                   this.$set(message, 'TranslatedText', translatedText);
@@ -1122,13 +1127,8 @@
                   this.$set(message, 'status', 'delivered');
                   
                   this.$forceUpdate();
+                  this.scrollToBottom(); // Scroll again after translation update
                 }, 500);
-                
-                this.newMessage = '';
-                
-                this.$nextTick(() => {
-                  this.scrollToBottom();
-                });
                 
                 // Simulate a response in demo mode after a short delay
                 setTimeout(() => {
@@ -1136,12 +1136,12 @@
                 }, 1000 + Math.random() * 2000);
               } else {
                 // Live mode - send via backend HTTP API for translation
-                this.sendMessageViaBackend(otherUser, this.newMessage);                // Add to local chat immediately for better UX
+                this.sendMessageViaBackend(otherUser, messageText);                // Add to local chat immediately for better UX
                 const message = {
                   id: this.messageCounter++,
                   Sender: this.username,
-                  Text: this.newMessage,
-                  OriginalText: this.newMessage, // Store original text
+                  Text: messageText,
+                  OriginalText: messageText, // Store original text
                   TranslatedText: null, // Pre-define for Vue reactivity
                   SourceLanguage: null, // Pre-define for Vue reactivity
                   TargetLanguage: null, // Pre-define for Vue reactivity
@@ -1155,9 +1155,7 @@
                 this.chats[this.currentChatId].lastActivity = new Date();
                 this.newMessage = '';
                 
-                this.$nextTick(() => {
-                  this.scrollToBottom();
-                });
+                this.scrollToBottom();
               }
             }
           },          sendMessageViaBackend: async function(targetUserId, message) {
@@ -1239,13 +1237,18 @@
               
               // Get the other user's language and simulate translation
               const otherUserLanguage = this.getTargetUserLanguage(otherUser);
-              const translatedToMyLanguage = this.simulateTranslation(randomResponse, otherUserLanguage, this.userLanguage);
+              
+              // First translate the English response to the other user's language (what they "send")
+              const responseInOtherLanguage = this.simulateTranslation(randomResponse, 'en', otherUserLanguage);
+              
+              // Then translate it back to our language (what we see)
+              const translatedToMyLanguage = this.simulateTranslation(responseInOtherLanguage, otherUserLanguage, this.userLanguage);
               
               const responseMessage = {
                 id: this.messageCounter++,
                 Sender: otherUser,
                 Text: translatedToMyLanguage, // What we see (translated)
-                OriginalText: randomResponse, // What they actually typed
+                OriginalText: responseInOtherLanguage, // What they actually typed (in their language)
                 TranslatedText: translatedToMyLanguage, // What we see (translated)
                 SourceLanguage: otherUserLanguage, // Their language
                 TargetLanguage: this.userLanguage, // Our language
@@ -1256,7 +1259,8 @@
               this.chats[this.currentChatId].messages.push(responseMessage);
               this.chats[this.currentChatId].lastActivity = new Date();
               
-              // Auto-scroll to show new message
+              // Auto-scroll to show new message with multiple attempts for reliability
+              this.scrollToBottom();
               this.$nextTick(() => {
                 this.scrollToBottom();
               });
@@ -1381,13 +1385,15 @@
           },
             scrollToBottom: function() {
             this.$nextTick(() => {
-              const messagesContainer = document.querySelector('.messages-container');
-              if (messagesContainer) {
-                messagesContainer.scrollTo({
-                  top: messagesContainer.scrollHeight,
-                  behavior: 'smooth'
-                });
-              }
+              setTimeout(() => {
+                const messagesContainer = document.querySelector('.messages-container');
+                if (messagesContainer) {
+                  messagesContainer.scrollTo({
+                    top: messagesContainer.scrollHeight,
+                    behavior: 'smooth'
+                  });
+                }
+              }, 50); // Small delay to ensure DOM has updated
             });
           },
           
@@ -1517,7 +1523,7 @@
                 "That's interesting!": 'Das ist interessant!',
                 "I see what you mean.": 'Ich verstehe, was du meinst.',
                 "Thanks for letting me know.": 'Danke, dass du es mir mitgeteilt hast.',
-                "Sounds good for me!": 'Klingt gut für mich!',
+                "Sounds good to me!": 'Klingt gut für mich!',
                 "I'll think about it.": 'Ich werde darüber nachdenken.',
                 "Great idea!": 'Tolle Idee!',
                 "Could you tell me more?": 'Könntest du mir mehr erzählen?',
@@ -1555,15 +1561,18 @@
               }
             };
             
-            // Handle translations TO target language
-            const targetTranslations = translations[targetLanguage];
-            if (targetTranslations && targetTranslations[text]) {
-              return targetTranslations[text];
+            // Handle translations FROM English TO target language
+            if (sourceLanguage === 'en') {
+              const targetTranslations = translations[targetLanguage];
+              if (targetTranslations && targetTranslations[text]) {
+                return targetTranslations[text];
+              }
+              // For demo purposes, if no exact translation found, return original text
+              return text;
             }
             
-            // Handle reverse translations (FROM source language TO English)
+            // Handle translations TO English from source language
             if (targetLanguage === 'en') {
-              // Find the text in the source language and return the English equivalent
               const sourceTranslations = translations[sourceLanguage];
               if (sourceTranslations) {
                 for (const [englishText, foreignText] of Object.entries(sourceTranslations)) {
@@ -1572,12 +1581,21 @@
                   }
                 }
               }
+              // For demo purposes, if no exact reverse translation found, return original text
+              return text;
             }
             
-            // Fallback: show translated indicator with target language
-            const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
-            const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
-            return `[${langDisplayName}: ${text}]`;
+            // Handle translations between non-English languages (via English)
+            if (sourceLanguage !== 'en' && targetLanguage !== 'en') {
+              // First translate to English, then to target
+              const englishText = this.simulateTranslation(text, sourceLanguage, 'en');
+              if (englishText !== text) {
+                return this.simulateTranslation(englishText, 'en', targetLanguage);
+              }
+            }
+            
+            // Fallback: return original text instead of bracketed fallback
+            return text;
           },
         },
         

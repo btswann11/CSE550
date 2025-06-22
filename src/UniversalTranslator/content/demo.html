@@ -977,13 +977,15 @@
 
           scrollToBottom: function() {
             this.$nextTick(() => {
-              const messagesContainer = document.querySelector('.messages-container');
-              if (messagesContainer) {
-                messagesContainer.scrollTo({
-                  top: messagesContainer.scrollHeight,
-                  behavior: 'smooth'
-                });
-              }
+              setTimeout(() => {
+                const messagesContainer = document.querySelector('.messages-container');
+                if (messagesContainer) {
+                  messagesContainer.scrollTo({
+                    top: messagesContainer.scrollHeight,
+                    behavior: 'smooth'
+                  });
+                }
+              }, 50); // Small delay to ensure DOM has updated
             });
           },
             completeSetup: async function() {
@@ -1421,11 +1423,10 @@
               if (targetTranslations && targetTranslations[text]) {
                 return targetTranslations[text];
               }
-              // For demo purposes, if no exact translation found, simulate a basic translation
+              // For demo purposes, if no exact translation found, use a simple fallback
               if (targetLanguage !== 'en') {
-                const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
-                const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
-                return `[${langDisplayName} translation: ${text}]`;
+                // Return original text instead of bracketed fallback
+                return text;
               }
             }
               // Handle translations TO English from source language
@@ -1440,9 +1441,8 @@
               }
               // For demo purposes, if no exact reverse translation found
               if (sourceLanguage !== 'en') {
-                const langName = this.supportedLanguages.find(l => l.code === sourceLanguage);
-                const langDisplayName = langName ? langName.name : sourceLanguage.toUpperCase();
-                return `[From ${langDisplayName}: ${text}]`;
+                // Return original text instead of bracketed fallback
+                return text;
               }
             }
             
@@ -1494,14 +1494,15 @@
 
           sendNewMessage: function() {
             if (this.newMessage.trim() && this.currentChatId) {
+              const messageText = this.newMessage.trim(); // Store the message text before clearing
               const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
               
               // Demo mode - local simulation
               const message = {
                 id: this.messageCounter++,
                 Sender: this.username,
-                Text: this.newMessage,
-                OriginalText: this.newMessage,
+                Text: messageText,
+                OriginalText: messageText,
                 TranslatedText: null,
                 SourceLanguage: null,
                 TargetLanguage: null,
@@ -1513,11 +1514,15 @@
               this.chats[this.currentChatId].messages.push(message);
               this.chats[this.currentChatId].lastActivity = new Date();
               
+              // Clear input and scroll immediately
+              this.newMessage = '';
+              this.scrollToBottom();
+              
               // Simulate translation response in demo mode
               setTimeout(() => {
                 const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
                 const targetLanguage = this.getTargetUserLanguage(otherUser);
-                const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
+                const translatedText = this.simulateTranslation(messageText, this.userLanguage, targetLanguage);
                 
                 this.$set(message, 'TranslatedText', translatedText);
                 this.$set(message, 'SourceLanguage', this.userLanguage);
@@ -1526,13 +1531,8 @@
                 this.$set(message, 'status', 'delivered');
                 
                 this.$forceUpdate();
+                this.scrollToBottom(); // Scroll again after translation update
               }, 500);
-              
-              this.newMessage = '';
-              
-              this.$nextTick(() => {
-                this.scrollToBottom();
-              });
               
               // Simulate a response after delay
               setTimeout(() => {
@@ -1557,13 +1557,18 @@
               
               const randomResponse = responses[Math.floor(Math.random() * responses.length)];
               const otherUserLanguage = this.getTargetUserLanguage(otherUser);
-              const translatedToMyLanguage = this.simulateTranslation(randomResponse, otherUserLanguage, this.userLanguage);
+              
+              // First translate the English response to the other user's language (what they "send")
+              const responseInOtherLanguage = this.simulateTranslation(randomResponse, 'en', otherUserLanguage);
+              
+              // Then translate it back to our language (what we see)
+              const translatedToMyLanguage = this.simulateTranslation(responseInOtherLanguage, otherUserLanguage, this.userLanguage);
               
               const responseMessage = {
                 id: this.messageCounter++,
                 Sender: otherUser,
                 Text: translatedToMyLanguage,
-                OriginalText: randomResponse,
+                OriginalText: responseInOtherLanguage,
                 TranslatedText: translatedToMyLanguage,
                 SourceLanguage: otherUserLanguage,
                 TargetLanguage: this.userLanguage,
@@ -1574,133 +1579,17 @@
               this.chats[this.currentChatId].messages.push(responseMessage);
               this.chats[this.currentChatId].lastActivity = new Date();
               
-              // Auto-scroll to show new message
+              // If not viewing this chat, increment unread count (fix from previous versions)
+              if (this.currentView !== 'chat' || this.currentChatId !== this.currentChatId) {
+                this.chats[this.currentChatId].unread = (this.chats[this.currentChatId].unread || 0) + 1;
+              }
+              
+              // Auto-scroll to show new message with multiple attempts for reliability
+              this.scrollToBottom();
               this.$nextTick(() => {
                 this.scrollToBottom();
               });
             }
-          },
-
-          getTargetUserLanguage: function(username) {
-            const userLanguageMap = {
-              'alice': 'fr',
-              'bob': 'es',
-              'charlie': 'de',
-              'diana': 'it',
-              'erik': 'pt'
-            };
-            return userLanguageMap[username.toLowerCase()] || 'es';
-          },
-
-          simulateTranslation: function(text, sourceLanguage, targetLanguage) {
-            // Skip translation if source and target are the same
-            if (sourceLanguage === targetLanguage) {
-              return text;
-            }
-            
-            // Demo translation mappings for different target languages
-            const translations = {
-              'es': { // Spanish
-                'Hello': 'Hola',
-                'How are you?': '¿Cómo estás?',
-                'Good morning': 'Buenos días',
-                'Thank you': 'Gracias',
-                'See you later': 'Hasta luego',
-                "That's interesting!": '¡Eso es interesante!',
-                "I see what you mean.": 'Veo lo que quieres decir.',
-                "Thanks for letting me know.": 'Gracias por hacérmelo saber.',
-                "Sounds good to me!": '¡Me suena bien!',
-                "I'll think about it.": 'Lo pensaré.',
-                "Great idea!": '¡Gran idea!',
-                "Could you tell me more?": '¿Podrías contarme más?',
-                "I agree with you.": 'Estoy de acuerdo contigo.'
-              },
-              'fr': { // French
-                'Hello': 'Bonjour',
-                'How are you?': 'Comment allez-vous?',
-                'Good morning': 'Bonjour',
-                'Thank you': 'Merci',
-                'See you later': 'À bientôt',
-                "That's interesting!": "C'est intéressant !",
-                "I see what you mean.": 'Je vois ce que vous voulez dire.',
-                "Thanks for letting me know.": 'Merci de me le faire savoir.',
-                "Sounds good to me!": 'Ça me semble bien !',
-                "I'll think about it.": "J'y réfléchirai.",
-                "Great idea!": 'Excellente idée !',
-                "Could you tell me more?": 'Pourriez-vous me dire plus ?',
-                "I agree with you.": 'Je suis d\'accord avec vous.',
-                "I'm doing great! Thanks for asking. How about you?": 'Je vais très bien ! Merci de demander. Et vous ?'
-              },
-              'de': { // German
-                'Hello': 'Hallo',
-                'How are you?': 'Wie geht es dir?',
-                'Good morning': 'Guten Morgen',
-                'Thank you': 'Danke',
-                'See you later': 'Bis später',
-                "That's interesting!": 'Das ist interessant!',
-                "I see what you mean.": 'Ich verstehe, was du meinst.',
-                "Thanks for letting me know.": 'Danke, dass du es mir mitgeteilt hast.',
-                "Sounds good to me!": 'Klingt gut für mich!',
-                "I'll think about it.": 'Ich werde darüber nachdenken.',
-                "Great idea!": 'Tolle Idee!',
-                "Could you tell me more?": 'Könntest du mir mehr erzählen?',
-                "I agree with you.": 'Ich stimme dir zu.'
-              },
-              'it': { // Italian
-                'Hello': 'Ciao',
-                'How are you?': 'Come stai?',
-                'Good morning': 'Buongiorno',
-                'Thank you': 'Grazie',
-                'See you later': 'Ci vediamo dopo',
-                "That's interesting!": 'È interessante!',
-                "I see what you mean.": 'Capisco cosa intendi.',
-                "Thanks for letting me know.": 'Grazie per avermelo fatto sapere.',
-                "Sounds good to me!": 'Mi sembra buono!',
-                "I'll think about it.": 'Ci penserò.',
-                "Great idea!": 'Ottima idea!',
-                "Could you tell me more?": 'Potresti dirmi di più?',
-                "I agree with you.": 'Sono d\'accordo con te.'
-              },
-              'pt': { // Portuguese
-                'Hello': 'Olá',
-                'How are you?': 'Como você está?',
-                'Good morning': 'Bom dia',
-                'Thank you': 'Obrigado',
-                'See you later': 'Até logo',
-                "That's interesting!": 'Isso é interessante!',
-                "I see what you mean.": 'Eu entendo o que você quer dizer.',
-                "Thanks for letting me know.": 'Obrigado por me avisar.',
-                "Sounds good to me!": 'Parece bom para mim!',
-                "I'll think about it.": 'Vou pensar sobre isso.',
-                "Great idea!": 'Ótima ideia!',
-                "Could you tell me more?": 'Você poderia me contar mais?',
-                "I agree with you.": 'Eu concordo com você.'
-              }
-            };
-            
-            // Handle translations TO target language
-            const targetTranslations = translations[targetLanguage];
-            if (targetTranslations && targetTranslations[text]) {
-              return targetTranslations[text];
-            }
-            
-            // Handle reverse translations (FROM source language TO English)
-            if (targetLanguage === 'en') {
-              // Find the text in the source language and return the English equivalent
-              const sourceTranslations = translations[sourceLanguage];
-              if (sourceTranslations) {
-                for (const [englishText, foreignText] of Object.entries(sourceTranslations)) {
-                  if (foreignText === text) {
-                    return englishText;
-                  }
-                }
-              }
-            }
-            
-            // Fallback: show translated indicator with target language
-            const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
-            const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
-            return `[${langDisplayName}: ${text}]`;
           },
 
           isMyMessage: function(message) {
