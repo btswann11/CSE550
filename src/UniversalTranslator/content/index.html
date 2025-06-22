@@ -681,15 +681,10 @@
                         <div :class="['message-bubble', isMyMessage(message) ? 'sent' : 'received']">
                             <div class="message-header">
                                 <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
-                                <span v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage" 
+                                <span v-if="!isMyMessage(message) && message.SourceLanguage && message.SourceLanguage !== this.userLanguage" 
                                       class="badge badge-light ml-1" 
                                       style="font-size: 0.65rem; opacity: 0.8;">
                                   {{ getLanguageCode(message.SourceLanguage) }}
-                                </span>
-                                <span v-if="isMyMessage(message) && message.isTranslated && message.TargetLanguage" 
-                                      class="badge badge-info ml-1" 
-                                      style="font-size: 0.65rem; opacity: 0.9;">
-                                  → {{ getLanguageCode(message.TargetLanguage) }}
                                 </span>
                             </div>
                             
@@ -701,6 +696,11 @@
                                 <!-- Show translated text below in dimmed color if translation occurred -->
                                 <div v-if="message.isTranslated && message.TranslatedText && message.TranslatedText !== (message.OriginalText || message.Text || message.text)" 
                                      class="message-translated-below">
+                                    <span v-if="message.TargetLanguage" 
+                                          class="badge badge-info mr-2" 
+                                          style="font-size: 0.65rem; opacity: 0.9;">
+                                      {{ getLanguageCode(message.TargetLanguage) }}
+                                    </span>
                                     {{ message.TranslatedText }}
                                 </div>
                                 <!-- Message Status for sent messages -->
@@ -1121,7 +1121,6 @@
                   
                   // Update the message with translation
                   this.$set(message, 'TranslatedText', translatedText);
-                  this.$set(message, 'SourceLanguage', this.userLanguage);
                   this.$set(message, 'TargetLanguage', targetLanguage);
                   this.$set(message, 'isTranslated', true);
                   this.$set(message, 'status', 'delivered');
