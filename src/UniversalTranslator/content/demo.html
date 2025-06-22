@@ -1,6 +1,8 @@
 <html>
 
 <head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Serverless Chat - Demo</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
     <script>
@@ -9,7 +11,7 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            overflow: hidden; /* Prevent body scroll */
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
@@ -21,7 +23,7 @@
             border-radius: 16px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            min-height: calc(100vh - 40px);
+            height: calc(100vh - 40px); /* Fixed height instead of min-height */
             display: flex;
             flex-direction: column;
             position: relative;
@@ -32,7 +34,7 @@
             .app-container {
                 margin: 10px;
                 border-radius: 12px;
-                min-height: calc(100vh - 20px);
+                height: calc(100vh - 20px);
             }
         }
         
@@ -247,19 +249,51 @@
         .message-container.sent {
             justify-content: flex-end;
         }
-          /* Floating chat input bubble styling */
+          /* Chat layout fixes */
+        .chat-main-container {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+        
+        .chat-messages-section {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+            height: 0; /* Force flex to calculate height */
+            scroll-behavior: smooth; /* Smooth scrolling */
+        }
+        
         .chat-input-container {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            z-index: 100;
+            flex-shrink: 0; /* Prevent input from shrinking */
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
         }
         
         .chat-input-bubble {
-            background: white;
+            background: #f8f9fa;
             border-radius: 25px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             padding: 15px 20px;
             max-width: 800px;
             margin: 0 auto;
@@ -340,10 +374,7 @@
             color: #dc3545 !important;
             font-weight: bold;
         }
-          /* Adjust main container to account for floating input */
-        .chat-main-container {
-            padding-bottom: 120px !important;
-        }
+          /* Remove padding from old layout */
         
         /* Chat list screen styling */
         .chats-list-container {
@@ -626,9 +657,11 @@
     </div>
 
     <!-- Individual Chat Screen -->
-    <div v-if="appReady && currentView === 'chat'" class="container-fluid d-flex flex-column chat-main-container" style="height: 100%; position: relative; flex: 1;"><!-- Chat Header -->
+    <div v-if="appReady && currentView === 'chat'" class="chat-main-container">
+        <!-- Chat Header -->
         <div class="chat-header">
-            <button class="back-button" @click="goToChatsListing">←</button>            <div class="chat-header-title">
+            <button class="back-button" @click="goToChatsListing">←</button>
+            <div class="chat-header-title">
                 {{ getCurrentChatDisplayName() }} - Demo
                 <span class="badge language-badge-header ml-2">
                     <span class="language-indicator">{{ getCurrentChatLanguagesDisplay() }}</span>
@@ -636,84 +669,88 @@
             </div>
         </div>
         
-        <div class="row" v-if="!ready" style="flex: 1;">
-            <div class="col">
-                <div class="d-flex align-items-center justify-content-center h-100">
-                    <div>Loading...</div>
-                </div>
-            </div>
-        </div>
-          <div v-if="ready" class="row" style="flex: 1; overflow: hidden; position: relative;">
-            <div class="col" style="display: flex; flex-direction: column; height: 100%;">
-                <!-- Messages area -->
-                <div class="messages-container" style="flex: 1; overflow-y: auto; padding: 20px; overflow-x: hidden;">
-                    <transition-group name="slide-fade" tag="div">
-                        <div v-for="message in getCurrentChatMessages()" v-bind:key="message.id" 
-                             :class="['message-container', isMyMessage(message) ? 'sent' : 'received']">                            <div :class="['message-bubble', isMyMessage(message) ? 'sent' : 'received']">
-                                <div class="message-header">
-                                    <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
-                                    <span v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage" 
-                                          class="badge badge-light ml-1" 
-                                          style="font-size: 0.65rem; opacity: 0.8;">
-                                      {{ getLanguageCode(message.SourceLanguage) }}
-                                    </span>
-                                    <span v-if="isMyMessage(message) && message.isTranslated && message.TargetLanguage" 
-                                          class="badge badge-info ml-1" 
-                                          style="font-size: 0.65rem; opacity: 0.9;">
-                                      → {{ getLanguageCode(message.TargetLanguage) }}
-                                    </span>
-                                </div>
-                                  <!-- For sent messages: show original text first, then translated text below -->
-                                <div v-if="isMyMessage(message)">
-                                    <div class="message-text">
-                                        {{ message.OriginalText || message.Text || message.text }}
-                                    </div>                                    <!-- Show translated text below in dimmed color if translation occurred -->
-                                    <div v-if="message.isTranslated && message.TranslatedText && message.SourceLanguage !== message.TargetLanguage" 
-                                         class="message-translated-below">
-                                        {{ message.TranslatedText }}
-                                    </div>
-                                    <!-- Message Status for sent messages -->
-                                    <div v-if="isMyMessage(message)" :class="['message-status', message.status || 'sending']">
-                                        <span v-if="message.status === 'sending'" class="status-icon">⏳</span>
-                                        <span v-if="message.status === 'delivered'" class="status-icon">✓</span>
-                                        <span v-if="message.status === 'failed'" class="status-icon">✗</span>
-                                        {{ getStatusText(message.status || 'sending') }}
-                                    </div>
-                                </div>
-                                
-                                <!-- For received messages: show translated text (what we see) and optionally original text above -->
-                                <div v-else>
-                                    <!-- Show original text if available and different from translated text -->
-                                    <div v-if="message.OriginalText && message.TranslatedText && message.OriginalText !== message.TranslatedText" class="message-original">
-                                        {{ message.OriginalText }}
-                                    </div>
-                                    
-                                    <!-- Show the main message text (translated or original) -->
-                                    <div class="message-text">                                        {{ message.TranslatedText || message.Text || message.text }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </transition-group>
-                </div>
+        <!-- Loading state -->
+        <div v-if="!ready" class="chat-messages-section">
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div>Loading...</div>
             </div>
         </div>
         
-        <!-- Floating chat input (only shown in chat view) -->
-        <div v-if="ready" class="chat-input-container">
-            <div class="chat-input-bubble">            <div class="chat-options">
-                <span :class="['char-counter', 'text-muted', { 'warning': newMessage.length > 200, 'danger': newMessage.length > 240 }]">
-                    {{ newMessage.length }}/256 characters
-                </span>
+        <!-- Chat content -->
+        <div v-if="ready" class="chat-messages-section">
+            <!-- Messages area with dedicated scroll -->
+            <div class="messages-container">
+                <transition-group name="slide-fade" tag="div">
+                    <div v-for="message in getCurrentChatMessages()" v-bind:key="message.id" 
+                         :class="['message-container', isMyMessage(message) ? 'sent' : 'received']">
+                        <div :class="['message-bubble', isMyMessage(message) ? 'sent' : 'received']">
+                            <div class="message-header">
+                                <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
+                                <span v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage" 
+                                      class="badge badge-light ml-1" 
+                                      style="font-size: 0.65rem; opacity: 0.8;">
+                                  {{ getLanguageCode(message.SourceLanguage) }}
+                                </span>
+                                <span v-if="isMyMessage(message) && message.isTranslated && message.TargetLanguage" 
+                                      class="badge badge-info ml-1" 
+                                      style="font-size: 0.65rem; opacity: 0.9;">
+                                  → {{ getLanguageCode(message.TargetLanguage) }}
+                                </span>
+                            </div>
+                            
+                            <!-- For sent messages: show original text first, then translated text below -->
+                            <div v-if="isMyMessage(message)">
+                                <div class="message-text">
+                                    {{ message.OriginalText || message.Text || message.text }}
+                                </div>
+                                <!-- Show translated text below in dimmed color if translation occurred -->
+                                <div v-if="message.isTranslated && message.TranslatedText && message.SourceLanguage !== message.TargetLanguage" 
+                                     class="message-translated-below">
+                                    {{ message.TranslatedText }}
+                                </div>
+                                <!-- Message Status for sent messages -->
+                                <div v-if="isMyMessage(message)" :class="['message-status', message.status || 'sending']">
+                                    <span v-if="message.status === 'sending'" class="status-icon">⏳</span>
+                                    <span v-if="message.status === 'delivered'" class="status-icon">✓</span>
+                                    <span v-if="message.status === 'failed'" class="status-icon">✗</span>
+                                    {{ getStatusText(message.status || 'sending') }}
+                                </div>
+                            </div>
+                            
+                            <!-- For received messages: show translated text (what we see) and optionally original text above -->
+                            <div v-else>
+                                <!-- Show original text if available and different from translated text -->
+                                <div v-if="message.OriginalText && message.TranslatedText && message.OriginalText !== message.TranslatedText" class="message-original">
+                                    {{ message.OriginalText }}
+                                </div>
+                                
+                                <!-- Show the main message text (translated or original) -->
+                                <div class="message-text">
+                                    {{ message.TranslatedText || message.Text || message.text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition-group>
             </div>
-            <form v-on:submit.prevent="sendNewMessage()" class="chat-input-form">
-                <input type="text" v-model="newMessage" id="message-box" class="chat-input-field"
-                       placeholder="Type message here..." maxlength="256" />
-                <button type="submit" class="chat-send-button" :disabled="!newMessage.trim()">
-                    ➤
-                </button>
-            </form>
         </div>
+        
+        <!-- Chat input (fixed at bottom) -->
+        <div v-if="ready" class="chat-input-container">
+            <div class="chat-input-bubble">
+                <div class="chat-options">
+                    <span :class="['char-counter', 'text-muted', { 'warning': newMessage.length > 200, 'danger': newMessage.length > 240 }]">
+                        {{ newMessage.length }}/256 characters
+                    </span>
+                </div>
+                <form v-on:submit.prevent="sendNewMessage()" class="chat-input-form">
+                    <input type="text" v-model="newMessage" id="message-box" class="chat-input-field"
+                           placeholder="Type message here..." maxlength="256" />
+                    <button type="submit" class="chat-send-button" :disabled="!newMessage.trim()">
+                        ➤
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -937,6 +974,18 @@
             this.showDisclaimer = false;
             this.showFailure = true;
           },
+
+          scrollToBottom: function() {
+            this.$nextTick(() => {
+              const messagesContainer = document.querySelector('.messages-container');
+              if (messagesContainer) {
+                messagesContainer.scrollTo({
+                  top: messagesContainer.scrollHeight,
+                  behavior: 'smooth'
+                });
+              }
+            });
+          },
             completeSetup: async function() {
             if (this.setupUsername.trim() && this.setupLanguage) {
               this.setupUsernameError = '';
@@ -968,6 +1017,8 @@
                 // In demo mode, skip SignalR connection
                 if (!this.isDemoMode) {
                   this.initializeConnection();
+                } else {
+                  this.ready = true; // Set ready immediately for demo mode
                 }
                 
               } catch (error) {
@@ -1439,144 +1490,61 @@
             if (diff < 3600000) return Math.floor(diff / 60000) + 'm'; // Less than 1 hour
             if (diff < 86400000) return Math.floor(diff / 3600000) + 'h'; // Less than 1 day
             return date.toLocaleDateString();
-          },          sendNewMessage: function() {
+          },
+
+          sendNewMessage: function() {
             if (this.newMessage.trim() && this.currentChatId) {
               const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
               
-              if (this.isDemoMode) {                // Demo mode - local simulation
-                const message = {
-                  id: this.messageCounter++,
-                  Sender: this.username,
-                  Text: this.newMessage,
-                  OriginalText: this.newMessage,
-                  TranslatedText: null, // Pre-define for Vue reactivity
-                  SourceLanguage: null, // Pre-define for Vue reactivity
-                  TargetLanguage: null, // Pre-define for Vue reactivity
-                  timestamp: new Date(),
-                  isTranslated: false,
-                  status: 'sending' // Initial status
-                };
-                
-                this.chats[this.currentChatId].messages.push(message);
-                this.chats[this.currentChatId].lastActivity = new Date();
-                  // Simulate translation response in demo mode
-                setTimeout(() => {
-                  // Get the target user's language (for demo, simulate different users having different languages)
-                  const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-                  const targetLanguage = this.getTargetUserLanguage(otherUser);
-                  
-                  // Simulate translation result based on target language
-                  const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
-                  
-                  // Update the message with translation
-                  this.$set(message, 'TranslatedText', translatedText);
-                  this.$set(message, 'SourceLanguage', this.userLanguage);
-                  this.$set(message, 'TargetLanguage', targetLanguage);
-                  this.$set(message, 'isTranslated', true);
-                  this.$set(message, 'status', 'delivered');
-                  
-                  this.$forceUpdate();
-                }, 500);
-                
-                this.newMessage = '';
-                
-                this.$nextTick(() => {
-                  this.scrollToBottom();
-                });
-                
-                // Simulate a response in demo mode after a short delay
-                setTimeout(() => {
-                  this.simulateResponse();
-                }, 1000 + Math.random() * 2000);
-              } else {
-                // Live mode - send via backend HTTP API for translation
-                this.sendMessageViaBackend(otherUser, this.newMessage);                // Add to local chat immediately for better UX
-                const message = {
-                  id: this.messageCounter++,
-                  Sender: this.username,
-                  Text: this.newMessage,
-                  OriginalText: this.newMessage, // Store original text
-                  TranslatedText: null, // Pre-define for Vue reactivity
-                  SourceLanguage: null, // Pre-define for Vue reactivity
-                  TargetLanguage: null, // Pre-define for Vue reactivity
-                  timestamp: new Date(),
-                  isPrivate: true,
-                  isTranslated: false, // Will be updated when response comes back
-                  status: 'sending' // Initial status
-                };
-                
-                this.chats[this.currentChatId].messages.push(message);
-                this.chats[this.currentChatId].lastActivity = new Date();
-                this.newMessage = '';
-                
-                this.$nextTick(() => {
-                  this.scrollToBottom();
-                });
-              }
-            }
-          },          sendMessageViaBackend: async function(targetUserId, message) {
-            try {
-              const userMessage = {
-                GroupName: this.currentChatId, // Use the chat ID as the group name
-                SourceUserId: this.username,
-                TargetUserId: targetUserId,
-                Message: message
+              // Demo mode - local simulation
+              const message = {
+                id: this.messageCounter++,
+                Sender: this.username,
+                Text: this.newMessage,
+                OriginalText: this.newMessage,
+                TranslatedText: null,
+                SourceLanguage: null,
+                TargetLanguage: null,
+                timestamp: new Date(),
+                isTranslated: false,
+                status: 'sending'
               };
               
-              const response = await fetch(`${window.apiBaseUrl}/api/SendMessageToUser`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userMessage)
-              });
-                if (response.ok) {
-                // Parse the response to get translation details
-                const translationResult = await response.json();
-                console.log('Message sent and translated:', translationResult);
+              this.chats[this.currentChatId].messages.push(message);
+              this.chats[this.currentChatId].lastActivity = new Date();
+              
+              // Simulate translation response in demo mode
+              setTimeout(() => {
+                const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
+                const targetLanguage = this.getTargetUserLanguage(otherUser);
+                const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
                 
-                // Update the local message with translation details
-                if (this.currentChatId && this.chats[this.currentChatId]) {
-                  const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-                  if (lastMessage && lastMessage.Sender === this.username && !lastMessage.isTranslated) {
-                    // Update the last sent message with translation details
-                    lastMessage.OriginalText = translationResult.OriginalText;
-                    lastMessage.TranslatedText = translationResult.TranslatedText;
-                    lastMessage.SourceLanguage = translationResult.SourceLanguage;
-                    lastMessage.TargetLanguage = translationResult.TargetLanguage;
-                    lastMessage.isTranslated = true;
-                    lastMessage.status = 'delivered';
-                    
-                    // Force Vue to re-render the message
-                    this.$forceUpdate();
-                  }
-                }
-              } else {
-                console.error('Failed to send message via backend');
-                // Mark message as failed
-                if (this.currentChatId && this.chats[this.currentChatId]) {
-                  const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-                  if (lastMessage && lastMessage.Sender === this.username) {
-                    lastMessage.status = 'failed';
-                    this.$forceUpdate();
-                  }
-                }
-              }            } catch (error) {
-              console.error('Error sending message via backend:', error);
-              // Mark message as failed on network error
-              if (this.currentChatId && this.chats[this.currentChatId]) {
-                const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-                if (lastMessage && lastMessage.Sender === this.username) {
-                  lastMessage.status = 'failed';
-                  this.$forceUpdate();
-                }
-              }
+                this.$set(message, 'TranslatedText', translatedText);
+                this.$set(message, 'SourceLanguage', this.userLanguage);
+                this.$set(message, 'TargetLanguage', targetLanguage);
+                this.$set(message, 'isTranslated', true);
+                this.$set(message, 'status', 'delivered');
+                
+                this.$forceUpdate();
+              }, 500);
+              
+              this.newMessage = '';
+              
+              this.$nextTick(() => {
+                this.scrollToBottom();
+              });
+              
+              // Simulate a response after delay
+              setTimeout(() => {
+                this.simulateResponse();
+              }, 1000 + Math.random() * 2000);
             }
           },
-            simulateResponse: function() {
+
+          simulateResponse: function() {
             if (this.currentChatId && this.chats[this.currentChatId]) {
               const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-              const englishResponses = [
+              const responses = [
                 "That's interesting!",
                 "I see what you mean.",
                 "Thanks for letting me know.",
@@ -1586,69 +1554,174 @@
                 "Could you tell me more?",
                 "I agree with you."
               ];
-              const randomEnglishResponse = englishResponses[Math.floor(Math.random() * englishResponses.length)];
               
-              // Get the other user's language
+              const randomResponse = responses[Math.floor(Math.random() * responses.length)];
               const otherUserLanguage = this.getTargetUserLanguage(otherUser);
-              
-              // First, translate from English to their language (what they actually typed)
-              const originalTextInTheirLanguage = this.simulateTranslation(randomEnglishResponse, 'en', otherUserLanguage);
-              
-              // Then translate from their language to our language (what we see)
-              const translatedToMyLanguage = this.simulateTranslation(originalTextInTheirLanguage, otherUserLanguage, this.userLanguage);
+              const translatedToMyLanguage = this.simulateTranslation(randomResponse, otherUserLanguage, this.userLanguage);
               
               const responseMessage = {
                 id: this.messageCounter++,
                 Sender: otherUser,
-                Text: translatedToMyLanguage, // What we see (translated to our language)
-                OriginalText: originalTextInTheirLanguage, // What they actually typed (in their language)
-                TranslatedText: translatedToMyLanguage, // What we see (translated to our language)
-                SourceLanguage: otherUserLanguage, // Their language
-                TargetLanguage: this.userLanguage, // Our language
+                Text: translatedToMyLanguage,
+                OriginalText: randomResponse,
+                TranslatedText: translatedToMyLanguage,
+                SourceLanguage: otherUserLanguage,
+                TargetLanguage: this.userLanguage,
                 timestamp: new Date(),
-                isTranslated: otherUserLanguage !== this.userLanguage // Only mark as translated if languages differ
+                isTranslated: true
               };
               
               this.chats[this.currentChatId].messages.push(responseMessage);
               this.chats[this.currentChatId].lastActivity = new Date();
-              // If not viewing this chat, increment unread count
-              if (this.currentView !== 'chat' || this.currentChatId !== this.currentChatId) {
-                this.chats[this.currentChatId].unread = (this.chats[this.currentChatId].unread || 0) + 1;
-              }
               
+              // Auto-scroll to show new message
               this.$nextTick(() => {
                 this.scrollToBottom();
               });
             }
           },
-            isMyMessage: function(message) {
+
+          getTargetUserLanguage: function(username) {
+            const userLanguageMap = {
+              'alice': 'fr',
+              'bob': 'es',
+              'charlie': 'de',
+              'diana': 'it',
+              'erik': 'pt'
+            };
+            return userLanguageMap[username.toLowerCase()] || 'es';
+          },
+
+          simulateTranslation: function(text, sourceLanguage, targetLanguage) {
+            // Skip translation if source and target are the same
+            if (sourceLanguage === targetLanguage) {
+              return text;
+            }
+            
+            // Demo translation mappings for different target languages
+            const translations = {
+              'es': { // Spanish
+                'Hello': 'Hola',
+                'How are you?': '¿Cómo estás?',
+                'Good morning': 'Buenos días',
+                'Thank you': 'Gracias',
+                'See you later': 'Hasta luego',
+                "That's interesting!": '¡Eso es interesante!',
+                "I see what you mean.": 'Veo lo que quieres decir.',
+                "Thanks for letting me know.": 'Gracias por hacérmelo saber.',
+                "Sounds good to me!": '¡Me suena bien!',
+                "I'll think about it.": 'Lo pensaré.',
+                "Great idea!": '¡Gran idea!',
+                "Could you tell me more?": '¿Podrías contarme más?',
+                "I agree with you.": 'Estoy de acuerdo contigo.'
+              },
+              'fr': { // French
+                'Hello': 'Bonjour',
+                'How are you?': 'Comment allez-vous?',
+                'Good morning': 'Bonjour',
+                'Thank you': 'Merci',
+                'See you later': 'À bientôt',
+                "That's interesting!": "C'est intéressant !",
+                "I see what you mean.": 'Je vois ce que vous voulez dire.',
+                "Thanks for letting me know.": 'Merci de me le faire savoir.',
+                "Sounds good to me!": 'Ça me semble bien !',
+                "I'll think about it.": "J'y réfléchirai.",
+                "Great idea!": 'Excellente idée !',
+                "Could you tell me more?": 'Pourriez-vous me dire plus ?',
+                "I agree with you.": 'Je suis d\'accord avec vous.',
+                "I'm doing great! Thanks for asking. How about you?": 'Je vais très bien ! Merci de demander. Et vous ?'
+              },
+              'de': { // German
+                'Hello': 'Hallo',
+                'How are you?': 'Wie geht es dir?',
+                'Good morning': 'Guten Morgen',
+                'Thank you': 'Danke',
+                'See you later': 'Bis später',
+                "That's interesting!": 'Das ist interessant!',
+                "I see what you mean.": 'Ich verstehe, was du meinst.',
+                "Thanks for letting me know.": 'Danke, dass du es mir mitgeteilt hast.',
+                "Sounds good to me!": 'Klingt gut für mich!',
+                "I'll think about it.": 'Ich werde darüber nachdenken.',
+                "Great idea!": 'Tolle Idee!',
+                "Could you tell me more?": 'Könntest du mir mehr erzählen?',
+                "I agree with you.": 'Ich stimme dir zu.'
+              },
+              'it': { // Italian
+                'Hello': 'Ciao',
+                'How are you?': 'Come stai?',
+                'Good morning': 'Buongiorno',
+                'Thank you': 'Grazie',
+                'See you later': 'Ci vediamo dopo',
+                "That's interesting!": 'È interessante!',
+                "I see what you mean.": 'Capisco cosa intendi.',
+                "Thanks for letting me know.": 'Grazie per avermelo fatto sapere.',
+                "Sounds good to me!": 'Mi sembra buono!',
+                "I'll think about it.": 'Ci penserò.',
+                "Great idea!": 'Ottima idea!',
+                "Could you tell me more?": 'Potresti dirmi di più?',
+                "I agree with you.": 'Sono d\'accordo con te.'
+              },
+              'pt': { // Portuguese
+                'Hello': 'Olá',
+                'How are you?': 'Como você está?',
+                'Good morning': 'Bom dia',
+                'Thank you': 'Obrigado',
+                'See you later': 'Até logo',
+                "That's interesting!": 'Isso é interessante!',
+                "I see what you mean.": 'Eu entendo o que você quer dizer.',
+                "Thanks for letting me know.": 'Obrigado por me avisar.',
+                "Sounds good to me!": 'Parece bom para mim!',
+                "I'll think about it.": 'Vou pensar sobre isso.',
+                "Great idea!": 'Ótima ideia!',
+                "Could you tell me more?": 'Você poderia me contar mais?',
+                "I agree with you.": 'Eu concordo com você.'
+              }
+            };
+            
+            // Handle translations TO target language
+            const targetTranslations = translations[targetLanguage];
+            if (targetTranslations && targetTranslations[text]) {
+              return targetTranslations[text];
+            }
+            
+            // Handle reverse translations (FROM source language TO English)
+            if (targetLanguage === 'en') {
+              // Find the text in the source language and return the English equivalent
+              const sourceTranslations = translations[sourceLanguage];
+              if (sourceTranslations) {
+                for (const [englishText, foreignText] of Object.entries(sourceTranslations)) {
+                  if (foreignText === text) {
+                    return englishText;
+                  }
+                }
+              }
+            }
+            
+            // Fallback: show translated indicator with target language
+            const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
+            const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
+            return `[${langDisplayName}: ${text}]`;
+          },
+
+          isMyMessage: function(message) {
             return (message.Sender || message.sender) === this.username;
-          },            getLanguageCode: function(languageCode) {
-            // Simply return the language code in uppercase - no need for hardcoded mappings
-            // The language code comes from the SignalR message and is already correct
+          },
+
+          getLanguageCode: function(languageCode) {
             return languageCode ? languageCode.toUpperCase() : '';
           },
-          
+
           getStatusText: function(status) {
             switch(status) {
-              case 'sending': return 'Sending...';
+              case 'sending': return 'Sending';
               case 'delivered': return 'Delivered';
-              case 'failed': return 'Failed to send';
-              default: return 'Sending...';
-            }
-          },
-          
-          scrollToBottom: function() {
-            const messagesContainer = document.querySelector('.messages-container') || 
-                                    document.querySelector('[style*="overflow-y: auto"]');
-            if (messagesContainer) {
-              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              case 'failed': return 'Failed';
+              default: return '';
             }
           }
         },
         
         mounted: function() {
-          // Ensure the disclaimer shows first when the app loads
           this.showDisclaimer = true;
           this.showLanguageSelection = false;
           this.showFailure = false;
@@ -1656,15 +1729,16 @@
         },
         
         updated: function() {
-          // Auto-scroll to bottom when new messages are added in chat view
-          if (this.appReady && this.ready && this.currentView === 'chat') {
-            this.$nextTick(() => {
-              this.scrollToBottom();
-            });
+          if (this.appReady && this.ready && this.currentView === 'chat' && this.currentChatId) {
+            const currentChat = this.chats[this.currentChatId];
+            if (currentChat && currentChat.messages.length > 0) {
+              this.$nextTick(() => {
+                this.scrollToBottom();
+              });
+            }
           }
         }
       });
         </script>
 </body>
-
 </html>
