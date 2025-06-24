@@ -47,10 +47,7 @@ public class Functions
 
             var user = JsonSerializer.Deserialize<UserMessage>(body);
 
-            if (user is null || string.IsNullOrWhiteSpace(user.GroupName) || 
-                string.IsNullOrWhiteSpace(user.SourceUserId) || 
-                string.IsNullOrWhiteSpace(user.TargetUserId) ||
-                string.IsNullOrWhiteSpace(user.Message))
+            if (!user.IsValid())
             {
                 var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
                 await errorResponse.WriteStringAsync("Invalid user data provided. GroupName, SourceUserId, TargetUserId, and Message are required.");
@@ -129,6 +126,21 @@ public class Functions
             await errorResponse.WriteStringAsync($"An error occurred while processing the message: {ex.Message}");
             return new SendMessageOutput { HttpResponse = errorResponse };
         }
+    }
+
+    private bool TryGetChatMember(string groupName, out IDictionary<string, ChatMember> chatMembers, out HttpResponseData response)
+    {
+        chatMembers = _storageService.GetChatMembersAsync(groupName).GetAwaiter().GetResult();
+        
+        if (chatMembers is null || chatMembers.Count < 1)
+        {
+            response = new HttpResponseData(System.Net.HttpStatusCode.NotFound);
+            response.WriteStringAsync("No chat members found for the specified group.").GetAwaiter().GetResult();
+            return false;
+        }
+
+        response = null;
+        return true;
     }
 
     [Function("AddChatMember")]
