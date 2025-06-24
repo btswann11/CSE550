@@ -38,7 +38,7 @@ This test covers requirements: NFR5, FR14
 5. Select "Accept" on the user agreement and age confirmation.
 6. Verify that the user is allowed to move forward to the username/language setup.
 
-### Test 2: Username Uniqueness and Validation
+### Test 2a: Username Uniqueness and Validation
 This test covers requirement: FR1
 
 #### Steps:
@@ -50,7 +50,7 @@ This test covers requirement: FR1
 6. Submit the form.
 7. Verify that the user is successfully taken to the chat interface, confirming the setup is accepted.
 
-### Test 3: Username Field Validation (Empty and Invalid Input)
+### Test 2b: Username Field Validation (Empty and Invalid Input)
 This test covers requirement: FR1
 
 #### Steps:
@@ -61,7 +61,7 @@ This test covers requirement: FR1
 5. Verify that the system rejects the input with a relevant message.
 6. Enter a valid username to confirm validation success.
 
-### Test 4: Sensitive Info Warning Is Always Displayed
+### Test 3: Sensitive Info Warning Is Always Displayed
 This test covers requirement: FR14
 
 #### Steps:
@@ -70,7 +70,7 @@ This test covers requirement: FR14
 3. Complete the setup and enter the chat interface.
 4. Verify that the same warning is also repeated or displayed in a persistent notice, banner, or tooltip in the chat UI.
 
-### Test 5: Prevent Unauthorized Session Access
+### Test 4: Prevent Unauthorized Session Access
 This test covers requirement: FR15
 
 #### Steps:
