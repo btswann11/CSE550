@@ -28,7 +28,9 @@ public class Functions
     {
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
-    }    [Function("SendMessageToUser")]
+    }
+
+    [Function("SendMessageToUser")]
     public async Task<SendMessageOutput> SendMessageToUser(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
@@ -98,12 +100,10 @@ public class Functions
                 GroupName = user.GroupName
             };
 
-            // Create HTTP response for the sender
             var httpResponse = req.CreateResponse(System.Net.HttpStatusCode.OK);
             httpResponse.Headers.Add("Content-Type", "application/json");
             await httpResponse.WriteStringAsync(JsonSerializer.Serialize(responseData));
 
-            // Create SignalR message for the target user
             var signalRMessage = new SignalRMessageAction("newMessage")
             {
                 GroupName = user.GroupName,
