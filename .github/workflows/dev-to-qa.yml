@@ -12,6 +12,6 @@ jobs:
       - name: Add issue to QA Project (Beta)
         uses: peter-evans/add-to-project@v1
         with:
-          project-url: https://github.com/users/btswann11/projects/1
+          project-url: https://github.com/users/btswann11/projects/2
           github-token: ${{ secrets.TOKEN }}
           content-id: ${{ github.event.issue.node_id }}
