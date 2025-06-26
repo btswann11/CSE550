@@ -13,6 +13,7 @@ This test covers requirement: FR4 - Text Input Restriction
  - Telugu Script
  - Tamil Script
  2. Click Send
+ 3. The text entered into the text box should be the same as the untranslated message  
  ### Expected Results:
  The text entered into the text box is the same as the untranslated message.
 
@@ -21,6 +22,7 @@ This test covers requirement: FR4 - Text Input Restriction
 ### Steps:
 1. Copy a GIF, picture, or word document and paste it into the text box
 2. Click Send
+3. The text box should not recognize any of the previously mentioned data
 ### Expected Results:
 The text box should not recognize any of the previously mentioned data
 
@@ -33,6 +35,7 @@ This test covers requirement: FR3 - Session Termination
 1. Have user X and user Y initiate a chat session 
 2. Have user X disconnect from the chat session
 3. Session should end for the user Y
+4. The chat window should display to user Y that user X has left the chat session
 ### Expected Results:
 The chat window will display to user Y that user X has left the chat session
 
@@ -43,6 +46,7 @@ This test covers requirement: FR13 - No Message Storage
 2. Have user X in the chat session disconnect, ending the session
 3. Have user Y navigate to a separate active session with user Z
 4. Have user Y attempt to reaccess the terminated session with user X
+5. The previously sent messages in the terminated session should be missing
 ### Expected Results:
 The messages in the terminated session should be deleted
 
@@ -75,5 +79,6 @@ This test covers requirement: NFR4 - Secure Channels
 4. Stop the network traffic capture
 5. Analyze the captured network traffic. Identify packets related to the message transmission from client to the server. Identify the packets related to the message reception from the server to the client.
 6. Inspect the protocol layers of these packets.
+7. All transmission and reception packets should clearly indicate the use of HTTPS
 ### Expected Results:
 All identified transmission and reception packets should should clearly indicate the use of HTTPS. The data payload of the messages within these packets should appear encrypted to the observer without decryption keys. No message transmission should occur over unecrypted protocols.
