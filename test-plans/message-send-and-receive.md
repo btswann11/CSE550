@@ -1,24 +1,17 @@
 ### Test: Message Sent Shows Status Indicators
 
-This test covers requirements: FR6, FR7, FR8
+## Overview
+This test verifies that users receive accurate visual feedback on the status of their messages after sending. It focuses on validating the system’s ability to display proper status indicators throughout the message lifecycle. The following requirements are covered in this component:
+
+| Requirement ID | Description                                                                                                                                              |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| FR6            | The sender shall be able to view the status of a message                                                                                                 |
+| FR7            | Messages that are successfully submitted to the backend system shall have a visible "sent" tag                                                           |
+| FR8            | Messages that are being processed through the system (sending, translation) shall be tagged as "In Progress"                                             |
 
 ### Steps:
 1. Open a chat session as User A  
 2. Type "Hello from User A" into the message input box  
-3. Click the **Send** button  
-4. Confirm that the message is initially labeled **In Progress**  
-5. Wait for backend confirmation  
-6. Confirm that the message status changes to **Sent**
-
-### Expected Results:
-- The message enters the system and displays the **In Progress** label after pressing Send  
-- Once acknowledged by the backend, the label changes to **Sent**  
-- The user sees status updates reflected in the chat interface
-
-### Acceptance Criteria:
-- 90% or more of messages must progress from **In Progress** to **Sent** within 5 seconds  
-- No messages should skip status labels or go out of order  
-- Less than 10% failure rate is acceptable due to backend instability or edge cases
-
-### Notes:
-This test assumes message input and backend status handling are already implemented. This test does not cover message reception or translation.
+3. Click the **Send** button and verify that the message is labeled **In Progress**  
+4. Wait for backend confirmation  
+5. Verify that the message status updates to **Sent**
