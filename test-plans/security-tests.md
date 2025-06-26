@@ -1,5 +1,5 @@
 ### Test _: Writing System Input Verification
-This test covers requirement: FR1
+This test covers requirement: FR4 - Text Input Restriction
 ### Steps:
 1. Enter a message from one of the following writing systems:
 - Latin Script
@@ -17,7 +17,7 @@ This test covers requirement: FR1
  The text entered into the text box is the same as the untranslated message.
 
  ### Test _: User cannot send files, pictures or gifs
- This test covers requirement: FR1
+ This test covers requirement: FR12 - Alphanumeric Data Only
 ### Steps:
 1. Copy a GIF, picture, or word document and paste it into the text box
 2. Click Send
@@ -28,7 +28,7 @@ The text box should not recognize any of the previously mentioned data
 I've been working with outdated requirements so I'll just put the ones not pertaining to the reqs here
 
 ### Test _: Session Ends When a User Disconnects
-This test covers requirement: 
+This test covers requirement: FR3 - Session Termination 
 ### Steps:
 1. Have user X and user Y initiate a chat session 
 2. Have user X disconnect from the chat session
@@ -37,7 +37,7 @@ This test covers requirement:
 The chat window will display to user Y that user X has left the chat session
 
 ### Test _: Verify that Messages from a Terminated Session are Erased
-This test covers requirement: 
+This test covers requirement: FR13 - No Message Storage 
 ### Steps:
 1. Initiate a chat between user X and user Y
 2. Have user X in the chat session disconnect, ending the session
@@ -47,7 +47,7 @@ This test covers requirement:
 The messages in the terminated session should be deleted
 
 ### Test _: Verify User Cannot Access a Private Chat Session without Permission
-This test covers requirement: 
+This test covers requirement: FR15 - Prevent Unauthorized Session Access 
 ### Steps:
 1. User X initiates a private chat with user Y
 2. User Z initiates a chat with either user X or user Y
@@ -56,7 +56,7 @@ This test covers requirement:
 User Z should not see messages or any details of the session between user X and user Y.
 
 ### Test _: Verify that User Warning Pops Up before Login Screen
-This test covers requirements: 
+This test covers requirements: FR14 - Warn Sensitive Info Sharing , NFR5 - Pre-Login Warning Screen
 ### Steps:
 1. User navigates to the website
 2. Pop up should appear warning the user not to share sensitive or private information
@@ -67,7 +67,7 @@ This test covers requirements:
 Pop up warning should appear before the user sees the login screen
 
 ### Test_: Messages Only Sent Using Secure Methods
-This test covers requirement: 
+This test covers requirement: NFR4 - Secure Channels 
 ### Steps:
 1. Start capturing network traffic using a network analysis tool
 2. Send a message within the chat application
