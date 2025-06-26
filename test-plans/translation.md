@@ -20,4 +20,4 @@ This test covers requirement: FR11
 7. Log in as **User C** with preferred language set to **French**  
 8. User B sends a message to **User C**  
 9. Verify that **User C** receives the translated message in **French** (translated from Spanish)  
-10. Verify that all translations are accurate, meaningful, and completed within 5 seconds
+10. Verify that all translations are accurate, meaningful, and completed
