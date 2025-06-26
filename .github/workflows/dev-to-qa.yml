@@ -1,18 +1,17 @@
 name: Move Issue to QA Board
 
 on:
-  project_card:
-    types: [moved]
+  issues:
+    types: [labeled]
 
 jobs:
-  sync-to-qa:
+  add-to-qa-board:
+    if: github.event.label.name == 'ready-for-qa'
     runs-on: ubuntu-latest
-    if: github.event.project_card.column_name == 'Ready for QA'
     steps:
-      - name: Add issue to QA project
+      - name: Add issue to QA Project (Beta)
         uses: peter-evans/add-to-project@v1
         with:
           project-url: https://github.com/users/btswann11/projects/1
           github-token: ${{ secrets.TOKEN }}
-          content-id: ${{ github.event.project_card.content_id }}
-          content-type: ISSUE
+          content-id: ${{ github.event.issue.node_id }}
