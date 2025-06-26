@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Add issue to QA Project (Beta)
-        uses: peter-evans/add-to-project@v1
+        uses: peter-evans/add-to-project@v2
         with:
           project-url: https://github.com/users/btswann11/projects/2
           github-token: ${{ secrets.TOKEN }}
