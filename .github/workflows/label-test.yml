@@ -1,0 +1,11 @@
+name: Label Test Trigger
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Label added: ${{ github.event.label.name }}"
