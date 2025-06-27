@@ -1,21 +1,29 @@
 ## Text Requirements Overview
-(idk if an overview is necessary)
+This is the list of all current requirements used for the translated text messaging web app
 
-### Functional Requirements
-1. Text shall only be able to be inputted in the text box.
-2. Text shall only be sent when pressing the send button.
-3. All visible text shall be in the language set by the user viewing it.
-4. The sender shall be able to view the status of the message:
-    1. The sent message shall display "Sent" beneath it when the message successfully arrives to the recipient.
-    2. The sent message shall display "In Progress" beneath it when the message is in the process of sending to the recipient.
-    3. The sent message shall display "Failed" beneath it when the message fails to send to the recipient. 
-        1. A failure is defined in `Nonfunctional Requirements 1.1`
-5. Sent and received messages shall be saved, up to a maximum of X (TBD) messages
-    1. Messages that are sent beyond the maximum shall cause the oldest message to be deleted.
-
-### Nonfunctional Requirements
-1. The time it takes for a text to be received after sending shall take a maximum of 5 seconds before being considered a failure.
-    1. Failed messages shall be able to be re-sent as a new message without the sender retyping it.
-2. Messages shall have a maximum size of 255 characters.
-3. Messages shall be received in the order that they are sent.
-    1. This excludes sent messages that are considered a failure
+| Requirement ID | Title | Description | Notes |
+|--|--|--|--|
+| FR1 | User Setup | The web application shall have a user setup, where the user picks a username as a unique identifier and their local language | |
+| FR2 | Message Condition on User Presence | Message can only be sent if more than one user is present in a session | |
+| FR3 | Session Termination | When a user leaves a chat the session shall terminate for the other user | |
+| FR4 | Text Input Restriction | Text shall only be able to be inputted in the text box | |
+| FR5 | Send on Button Press | Text shall only be sent when pressing the send button | |
+| FR6 | View Message Status | The sender shall be able to view the status of a message | |
+| FR7 | Sent Tag Visibility | Messages that are successfully submitted to the backend system shall have a visible "sent" tag | |
+| FR8 | In Progress Tag | Messages that are being processed through the system (sending, translation) shall be tagged as "In Progress" | |
+| FR9 | Failed Tag | Messages that failed to reach the backend system shall be tagged as "Failed" | |
+| FR10 | Retry Failed Message | Users shall have the ability to retry sending a failed message | |
+| FR11 | Show Translated Message | The users local screen shall show original message (source language) and the translated version (destination language) | |
+| FR12 | Alphanumeric Data Only | The application shall only allow alphanumeric characters and strings to be sent | |
+| FR13 | No Message Storage | The web application shall not store any user messages beyond the length of the session lifecycle | |
+| FR14 | Warn Sensitive Info Sharing | The application shall warn the user not to share private or sensitive information | |
+| FR15 | Prevent Unauthorized Session Access | The system shall prevent users from accessing an existing chat session unless they have been authenticated through proper setup. | |
+| NFR1 | Message Delivery Time | Messages shall be delivered to recipients within 5 seconds of sending | |
+| NFR2 | Message Size Limit | Message size shall be limited to 256 characters | |
+| NFR3 | FIFO Message Ordering | Messages shall be FIFO (first-in-first-out) | |
+| NFR4 | Secure Channels | Message transmission shall occur over secure channels | |
+| NFR5 | Pre-Login Warning Screen | A pre-login screen shall be shown that includes warnings about data privacy and age limitations before allowing the user to proceed with login or setup. | |
+| NFR6 | Backend Translation with Standards | Message translation shall be performed on the backend, decoupling the front-end implementation from core functionality, and the application shall use third-party translation services that comply with current industry standards (e.g., Azure AI Translator, OpenAI). | Planned to be removed due to being unable to be tested by QA |
+| NFR7 | Infrastructure using IAC | Infrastructure shall be delcared using Iac (Terraform or Bicep) | Planned to be removed due to being unable to be tested by QA |
+| NFR8 | Infrastructure using Azure | Infrastructure shall be hosted in Azure | Planned to be removed due to being unable to be tested by QA |
+| NFR9 | CI/CD in Github | CI/CD shall be done using GitHub Actions | Planned to be removed due to being unable to be tested by QA |
