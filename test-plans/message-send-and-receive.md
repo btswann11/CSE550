@@ -1,4 +1,4 @@
-### Test: Message Sent Shows Status Indicators
+# Text Message Send and Receive Tests
 
 ## Overview
 This test verifies that users receive accurate visual feedback on the status of their messages after sending. It focuses on validating the system’s ability to display proper status indicators throughout the message lifecycle. The following requirements are covered in this component:
