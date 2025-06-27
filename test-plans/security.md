@@ -10,7 +10,7 @@ These test cover edge cases and various other security related tests
 
 ### Test 1: Writing System Input Verification
 This test covers requirement: FR4
-### Steps:
+#### Steps:
 1. Enter a message from one of the following writing systems:
 - Latin Script
 - Chinese Characters
@@ -27,14 +27,14 @@ This test covers requirement: FR4
 
 ### Test 2: Verify User Cannot Access a Private Chat Session without Permission
 This test covers requirement: FR15
-### Steps:
+#### Steps:
 1. User X initiates a private chat with user Y
 2. User Z initiates a chat with either user X or user Y
 3. Verify that user Z does not gain access to the existing private chat session between user X and Y
 
 ### Test 3: Messages Only Sent Using Secure Methods
 This test covers requirement: NFR4
-### Steps:
+#### Steps:
 1. Start capturing network traffic using a network analysis tool
 2. Send a message within the chat application
 3. Recieve a message within the chat application
