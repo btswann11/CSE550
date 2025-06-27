@@ -1,7 +1,7 @@
 # Text Message Send and Receive Tests
 
 ## Overview
-This test verifies that users receive accurate visual feedback on the status of their messages after sending. It focuses on validating the system’s ability to display proper status indicators throughout the message lifecycle. The following requirements are covered in this component:
+These tests verify that normal use cases are validated and requirements related to message sending and receiving are met
 
 | Requirement ID | Description                                                                                                                                              |
 |----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
