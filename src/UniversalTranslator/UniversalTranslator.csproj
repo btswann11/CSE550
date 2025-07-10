@@ -7,7 +7,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="content\index.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="content\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Include="local.settings.json" />
     <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />

@@ -17,6 +17,17 @@ public class TranslationService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
+    public async Task<string> GetSupportedLanguagesAsync()
+    {
+        var response = await _httpClient.GetAsync("/languages?api-version=3.0");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Failed to retrieve supported languages: {response.ReasonPhrase}");
+        }
+        return await response.Content.ReadAsStringAsync();
+    }
+
     public async Task<string> TranslateAsync(string text, string fromLanguage, string toLanguage)
     {
         if (string.IsNullOrWhiteSpace(text))

@@ -4,17 +4,18 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.SignalRService;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace UniversalTranslator;
 
 public record User(string GroupName, string UserId, string Language, string? ConnectionId);
-public record UserMessage(string GroupName, string SourceUserId, string TargetUserId, string Message);
+public record UserMessage(string GroupName, string SourceUserId, string TargetUserId, string Message, DateTime TimeStamp);
 
 public class SendMessageOutput
 {
     [SignalROutput(HubName = "chat")]
     public SignalRMessageAction? SignalRMessage { get; set; }
-    
+
     [HttpResult]
     public HttpResponseData? HttpResponse { get; set; }
 }
@@ -23,19 +24,67 @@ public class Functions
 {
     private readonly StorageService _storageService;
     private readonly TranslationService _translationService;
+    private readonly ILogger<Functions> _logger;
 
-    public Functions(StorageService storageService, TranslationService translationService)
+    public Functions(StorageService storageService, TranslationService translationService, ILogger<Functions> logger)
     {
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
-    }    [Function("SendMessageToUser")]
+        _logger = logger;
+    }
+
+    [Function("Index")]
+    public async Task<HttpResponseData> Index(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequestData req)
+    {
+        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "text/html; charset=utf-8");
+
+        // Adjust the path as needed for your deployment environment
+        var filePath = Path.Combine(Environment.CurrentDirectory, "content", "index.html");
+
+        if (!File.Exists(filePath))
+        {
+            response.StatusCode = System.Net.HttpStatusCode.NotFound;
+            await response.WriteStringAsync("index.html not found.");
+            return response;
+        }
+
+        var html = await File.ReadAllTextAsync(filePath);
+        await response.WriteStringAsync(html);
+        return response;
+    }
+
+    [Function("GetSupportedLanguages")]
+    public async Task<HttpResponseData> GetSupportedLanguages(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "supportedlanguages")] HttpRequestData req)
+    {
+        try
+        {
+            var languages = await _translationService.GetSupportedLanguagesAsync();
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(languages);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving supported languages");
+            var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"An error occurred while retrieving supported languages: {ex.Message}");
+            return errorResponse;
+        }
+    }
+    
+
+    [Function("SendMessageToUser")]
     public async Task<SendMessageOutput> SendMessageToUser(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
         try
         {
             var body = await new StreamReader(req.Body).ReadToEndAsync();
-            
+
             if (string.IsNullOrWhiteSpace(body))
             {
                 var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
@@ -43,19 +92,19 @@ public class Functions
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            var user = JsonSerializer.Deserialize<UserMessage>(body);
+            var userMessage = JsonSerializer.Deserialize<UserMessage>(body);
 
-            if (user is null || string.IsNullOrWhiteSpace(user.GroupName) || 
-                string.IsNullOrWhiteSpace(user.SourceUserId) || 
-                string.IsNullOrWhiteSpace(user.TargetUserId) ||
-                string.IsNullOrWhiteSpace(user.Message))
+            if (userMessage is null || string.IsNullOrWhiteSpace(userMessage.GroupName) ||
+                string.IsNullOrWhiteSpace(userMessage.SourceUserId) ||
+                string.IsNullOrWhiteSpace(userMessage.TargetUserId) ||
+                string.IsNullOrWhiteSpace(userMessage.Message))
             {
                 var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
                 await errorResponse.WriteStringAsync("Invalid user data provided. GroupName, SourceUserId, TargetUserId, and Message are required.");
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            var chatMembers = await _storageService.GetChatMembersAsync(user.GroupName);
+            var chatMembers = await _storageService.GetChatMembersAsync(userMessage.GroupName);
 
             if (chatMembers is null || chatMembers.Count < 1)
             {
@@ -64,38 +113,39 @@ public class Functions
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            if (!chatMembers.ContainsKey(user.SourceUserId))
+            if (!chatMembers.ContainsKey(userMessage.SourceUserId))
             {
                 var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
-                await errorResponse.WriteStringAsync($"Source user '{user.SourceUserId}' not found in group '{user.GroupName}'.");
+                await errorResponse.WriteStringAsync($"Source user '{userMessage.SourceUserId}' not found in group '{userMessage.GroupName}'.");
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            if (!chatMembers.ContainsKey(user.TargetUserId))
+            if (!chatMembers.ContainsKey(userMessage.TargetUserId))
             {
                 var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
-                await errorResponse.WriteStringAsync($"Target user '{user.TargetUserId}' not found in group '{user.GroupName}'.");
+                await errorResponse.WriteStringAsync($"Target user '{userMessage.TargetUserId}' not found in group '{userMessage.GroupName}'.");
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            var sourceLanguage = chatMembers[user.SourceUserId].Language;
-            var targetLanguage = chatMembers[user.TargetUserId].Language;
+            var sourceLanguage = chatMembers[userMessage.SourceUserId].Language;
+            var targetLanguage = chatMembers[userMessage.TargetUserId].Language;
 
             // If source and target languages are the same, no translation is needed
             var translatedText = sourceLanguage == targetLanguage
-            ? user.Message
-            : await _translationService.TranslateAsync(user.Message, sourceLanguage, targetLanguage);
+            ? userMessage.Message
+            : await _translationService.TranslateAsync(userMessage.Message, sourceLanguage, targetLanguage);
 
             // Create the response data
             var responseData = new
             {
-                OriginalText = user.Message,
+                OriginalText = userMessage.Message,
                 TranslatedText = translatedText,
-                SourceUserId = user.SourceUserId,
-                TargetUserId = user.TargetUserId,
+                SourceUserId = userMessage.SourceUserId,
+                TargetUserId = userMessage.TargetUserId,
                 SourceLanguage = sourceLanguage,
                 TargetLanguage = targetLanguage,
-                GroupName = user.GroupName
+                GroupName = userMessage.GroupName,
+                TimeStamp = userMessage.TimeStamp
             };
 
             // Create HTTP response for the sender
@@ -106,29 +156,57 @@ public class Functions
             // Create SignalR message for the target user
             var signalRMessage = new SignalRMessageAction("newMessage")
             {
-                GroupName = user.GroupName,
-                UserId = user.TargetUserId,
+                GroupName = userMessage.GroupName,
+                UserId = userMessage.TargetUserId,
                 Arguments = [responseData]
             };
 
-            return new SendMessageOutput 
-            { 
+            return new SendMessageOutput
+            {
                 HttpResponse = httpResponse,
                 SignalRMessage = signalRMessage
             };
         }
         catch (JsonException ex)
         {
+            _logger.LogError(ex, "Invalid JSON format in request body for SendMessageToUser");
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
             await errorResponse.WriteStringAsync($"Invalid JSON format in request body: {ex.Message}");
             return new SendMessageOutput { HttpResponse = errorResponse };
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred while processing message in SendMessageToUser");
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"An error occurred while processing the message: {ex.Message}");
             return new SendMessageOutput { HttpResponse = errorResponse };
         }
+    }
+
+    private bool IsValiderUser(User? user, out string message)
+    {
+        message = string.Empty;
+        if (user is null)
+        {
+            message = "User data cannot be null.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(user.GroupName))
+        {
+            message = "GroupName is required.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(user.UserId))
+        {
+            message = "UserId is required.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(user.Language))
+        {
+            message = "Language is required.";
+            return false;
+        }
+        return true;
     }
 
     [Function("AddChatMember")]
@@ -138,7 +216,7 @@ public class Functions
         try
         {
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            
+
             if (string.IsNullOrWhiteSpace(requestBody))
             {
                 var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
@@ -148,32 +226,10 @@ public class Functions
 
             var user = JsonSerializer.Deserialize<User>(requestBody);
 
-            if (user is null)
+            if(!IsValiderUser(user, out var validationMessage))
             {
                 var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Invalid request body format.");
-                return badResponse;
-            }
-
-            // Validate required properties after deserialization
-            if (string.IsNullOrWhiteSpace(user.GroupName))
-            {
-                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("GroupName is required.");
-                return badResponse;
-            }
-
-            if (string.IsNullOrWhiteSpace(user.UserId))
-            {
-                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("UserId is required.");
-                return badResponse;
-            }
-
-            if (string.IsNullOrWhiteSpace(user.Language))
-            {
-                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Language is required.");
+                await badResponse.WriteStringAsync(validationMessage);
                 return badResponse;
             }
 
@@ -196,18 +252,21 @@ public class Functions
         }
         catch (JsonException ex)
         {
+            _logger.LogError(ex, "Invalid JSON format in request body for AddChatMember");
             var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
             await badResponse.WriteStringAsync($"Invalid JSON format: {ex.Message}");
             return badResponse;
         }
         catch (RequestFailedException ex) when (ex.Status == 409)
         {
+            _logger.LogWarning(ex, "Conflict occurred while adding chat member - user already exists in group");
             var conflictResponse = req.CreateResponse(System.Net.HttpStatusCode.Conflict);
             await conflictResponse.WriteStringAsync("User already exists in the group.");
             return conflictResponse;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred while adding chat member");
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"An error occurred while adding the chat member: {ex.Message}");
             return errorResponse;
@@ -243,12 +302,14 @@ public class Functions
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
+            _logger.LogWarning(ex, "Chat member '{UserId}' not found in group '{GroupName}' for removal", userId, groupName);
             var notFound = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
             await notFound.WriteStringAsync($"Chat member '{userId}' not found in group '{groupName}'.");
             return notFound;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred while removing chat member '{UserId}' from group '{GroupName}'", userId, groupName);
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"An error occurred while removing the chat member: {ex.Message}");
             return errorResponse;
@@ -270,7 +331,7 @@ public class Functions
             }
 
             var members = await _storageService.GetChatMembersAsync(groupName);
-            
+
             if (members == null)
             {
                 var notFoundResponse = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
@@ -285,15 +346,16 @@ public class Functions
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred while retrieving chat members for group '{GroupName}'", groupName);
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"An error occurred while retrieving chat members: {ex.Message}");
             return errorResponse;
         }
     }
 
-    [Function("IsUserNameAvailable")]
-    public async Task<HttpResponseData> IsUserNameAvailable(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "isusernameavailable/{username}")] HttpRequestData req,
+    [Function("IsUserOnline")]
+    public async Task<HttpResponseData> IsUserOnline(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "isuseronline/{username}")] HttpRequestData req,
         string username)
     {
         try
@@ -305,25 +367,56 @@ public class Functions
                 return badResponse;
             }
 
-            // Basic username validation
-            if (username.Length < 2 || username.Length > 50)
-            {
-                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Username must be between 2 and 50 characters.");
-                return badResponse;
-            }
+            var isOnline = await _storageService.IsUserOnlineAsync(username);
 
-            var isAvailable = await _storageService.IsUserNameAvailableAsync(username);
-            
             var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(new { IsAvailable = isAvailable }));
+            await response.WriteStringAsync(JsonSerializer.Serialize(new { IsOnline = isOnline }));
             return response;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred while checking if user '{Username}' is online", username);
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"An error occurred while checking username availability: {ex.Message}");            return errorResponse;
+            await errorResponse.WriteStringAsync($"An error occurred while checking username availability: {ex.Message}"); 
+            return errorResponse;
+        }
+    }
+
+    [Function("DeleteUser")]
+    public async Task<HttpResponseData> DeleteUser(
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "deleteuser/{username}")] HttpRequestData req,
+        string username)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Username is required.");
+                return badResponse;
+            }
+            // Attempt to delete the user
+            await _storageService.DeleteUserAsync(username);
+
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            await response.WriteStringAsync($"User '{username}' deleted successfully.");
+            return response;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            _logger.LogWarning(ex, "User '{Username}' not found for deletion", username);
+            var notFoundResponse = req.CreateResponse(System.Net.HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync($"User '{username}' not found.");
+            return notFoundResponse;
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting user '{Username}'", username);
+            var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"An error occurred while deleting the user: {ex.Message}");
+            return errorResponse;
         }
     }
 }

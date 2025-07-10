@@ -11,13 +11,21 @@ using UniversalTranslator;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
-builder.Configuration["AzureSignalRConnectionString"] = Environment.GetEnvironmentVariable(Constants.SignalRConnectionStringKey)
-    ?? throw new InvalidOperationException("AzureSignalRConnectionString environment variable is not set.");
 
 builder.Services
        .AddSignalR();
 
 builder.Services
+       .AddSingleton<StorageService>()
+       .AddCors(options =>
+       {
+           options.AddDefaultPolicy(policy =>
+           {
+               policy.AllowAnyOrigin()
+                     .AllowAnyHeader()
+                     .AllowAnyMethod();
+           });
+       })
        .AddSingleton<TableClient>(sp => new(
                 Environment.GetEnvironmentVariable(Constants.ConnectionStringKey)
                     ?? throw new InvalidOperationException($"{Constants.ConnectionStringKey} environment variable is not set.")
@@ -26,7 +34,9 @@ builder.Services
        )
        .AddHttpClient<TranslationService>(client =>
        {
-           client.BaseAddress = new Uri(Constants.TranslationServiceBaseUrlKey);
+           var baseUri = Environment.GetEnvironmentVariable(Constants.TranslationServiceBaseUrlKey)
+                             ?? throw new InvalidOperationException($"{Constants.TranslationServiceBaseUrlKey} environment variable is not set.");
+           client.BaseAddress = new Uri(baseUri);
            client.DefaultRequestHeaders
                     .Add("Ocp-Apim-Subscription-Key"
                         , Environment.GetEnvironmentVariable(Constants.TranslationServiceApiKey)
@@ -35,8 +45,7 @@ builder.Services
            client.DefaultRequestHeaders
                      .Add("Ocp-Apim-Subscription-Region", Environment.GetEnvironmentVariable(Constants.TranslationServiceLocationKey)
                      ?? throw new InvalidOperationException($"{Constants.TranslationServiceLocationKey} environment variable is not set."));
-       });
-
+       });       
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
