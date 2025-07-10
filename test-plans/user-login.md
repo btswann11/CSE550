@@ -41,8 +41,8 @@ This test covers requirement: FR1
 
 #### Steps:
 1. Proceed to the user setup page and accept the popup.
-2. Enter a username that is already in use (e.g., "testuser1").
-3. Open a separate browset and repeat steps 1 and 2
+2. Choose a username (e.g., "testuser1").
+3. Open a separate browset and repeat steps 1 and 2 making sure to choose the same username as step 2
 4. Verify that a warning appears stating the username is already in use.
 5. Enter a new, unique username (e.g., "newuser123").
 6. Select a native language from the dropdown.
