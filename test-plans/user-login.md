@@ -40,13 +40,14 @@ This test covers requirements: NFR5, FR14
 This test covers requirement: FR1
 
 #### Steps:
-1. Proceed to the user setup page.
+1. Proceed to the user setup page and accept the popup.
 2. Enter a username that is already in use (e.g., "testuser1").
-3. Verify that a warning appears stating the username is already in use.
-4. Enter a new, unique username (e.g., "newuser123").
-5. Select a native language from the dropdown.
-6. Submit the form.
-7. Verify that the user is successfully taken to the chat interface, confirming the setup is accepted.
+3. Open a separate browset and repeat steps 1 and 2
+4. Verify that a warning appears stating the username is already in use.
+5. Enter a new, unique username (e.g., "newuser123").
+6. Select a native language from the dropdown.
+7. Submit the form.
+8. Verify that the user is successfully taken to the chat interface, confirming the setup is accepted.
 
 ### Test 2b: Username Field Validation (Empty and Invalid Input)
 This test covers requirement: FR1
