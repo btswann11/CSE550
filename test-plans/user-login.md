@@ -20,12 +20,10 @@ This test covers requirements: NFR5, FR14
 2. Verify that a warning screen is immediately displayed before any login or input is available.
 3. Confirm the screen contains a message not to share sensitive information.
 4. Confirm the screen asks for age confirmation (18+).
-5. Attempt to continue without confirming age.
-6. Verify that the user is not allowed to proceed.
-7. Select "Decline" on the user agreement or age confirmation.
-8. Verify that a message is displayed stating: "You must accept the user agreement and be 18 years or older."
-9. Confirm that the user is not allowed to use the app and cannot proceed further.
-10. Attempting to interact with the app should not allow access; the only way to proceed is to refresh the webpage and accept the agreement.
+5. Select "Decline" on the user agreement or age confirmation.
+6. Verify that a message is displayed stating: "You must accept the user agreement and be 18 years or older."
+7. Confirm that the user is not allowed to use the app and cannot proceed further.
+8. Attempting to interact with the app should not allow access; the only way to proceed is to refresh the webpage and accept the agreement.
 
 ### Test 1b: User Accepts Pre-login Warning Screen
 This test covers requirements: NFR5, FR14
