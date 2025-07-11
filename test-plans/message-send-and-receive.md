@@ -38,7 +38,7 @@ This test covers FR2, FR5, FR6, FR7, FR8
 #### Steps
 
 1. Open a chat session as User A
-2. Start new chat with 
+2. Start new chat with User B
 3. Type "Hello from User A" into the message input box  
 4. Click the **Send** button and verify that the message is labeled **In Progress**  
 5. Wait for backend confirmation  
