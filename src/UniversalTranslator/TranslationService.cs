@@ -48,7 +48,7 @@ public class TranslationService
             new TranslationRequest(text)
         };
 
-        var response = await _httpClient.PostAsJsonAsync($"/translate?api-version=3.0&from={fromLanguage}&to=fr&to={toLanguage}", body);
+        var response = await _httpClient.PostAsJsonAsync($"/translate?api-version=3.0&from={fromLanguage}&to={toLanguage}", body);
         
         response.EnsureSuccessStatusCode();
         

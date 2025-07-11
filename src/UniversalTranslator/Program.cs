@@ -4,16 +4,20 @@ using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 using UniversalTranslator;
-
-
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
-builder.Services
-       .AddSignalR();
+// Configure JSON options globally
+builder.Services.Configure<JsonSerializerOptions>(options =>
+{
+    options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.WriteIndented = false;
+    options.PropertyNameCaseInsensitive = true;
+});
 
 builder.Services
        .AddSingleton<StorageService>()
@@ -45,7 +49,7 @@ builder.Services
            client.DefaultRequestHeaders
                      .Add("Ocp-Apim-Subscription-Region", Environment.GetEnvironmentVariable(Constants.TranslationServiceLocationKey)
                      ?? throw new InvalidOperationException($"{Constants.TranslationServiceLocationKey} environment variable is not set."));
-       });       
+       });
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()

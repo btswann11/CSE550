@@ -1,1778 +1,2178 @@
 ﻿<html>
 
 <head>
-  <title>Serverless Chat</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
-  <script>
-    window.apiBaseUrl = 'http://localhost:7151';
-  </script>
-  <style>
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
-    /* Main app container */
-    .app-container {
-      max-width: 1200px;
-      margin: 20px auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      min-height: calc(100vh - 40px);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-      .app-container {
-        margin: 10px;
-        border-radius: 12px;
-        min-height: calc(100vh - 20px);
-      }
-    }
-
-    .slide-fade-enter-active,
-    .slide-fade-leave-active {
-      transition: all 1s ease;
-    }
-
-    .slide-fade-enter,
-    .slide-fade-leave-to {
-      height: 0px;
-      overflow-y: hidden;
-      opacity: 0;
-    }
-
-    /* Custom scrollbar for messages area */
-    .messages-container::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .messages-container::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-
-    .messages-container::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 3px;
-    }
-
-    .messages-container::-webkit-scrollbar-thumb:hover {
-      background: #555;
-    }
-
-    .disclaimer-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .disclaimer-content {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      max-width: 500px;
-      margin: 20px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    }
-
-    .language-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .language-content {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      max-width: 400px;
-      margin: 20px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .failure-screen {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      text-align: center;
-      padding: 40px;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    .container-fluid,
-    .row,
-    .col,
-    .col-sm {
-      max-width: 100%;
-      overflow-wrap: break-word;
-      word-wrap: break-word;
-    }
-
-    .message-bubble {
-      max-width: 70%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      margin: 8px 0;
-      position: relative;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      hyphens: auto;
-    }
-
-    .message-bubble.received {
-      background-color: #007bff;
-      color: white;
-      margin-left: 0;
-      margin-right: auto;
-      border-bottom-left-radius: 4px;
-    }
-
-    .message-bubble.sent {
-      background-color: #e9ecef;
-      color: #333;
-      margin-left: auto;
-      margin-right: 0;
-      border-bottom-right-radius: 4px;
-    }
-
-    .message-header {
-      font-size: 0.75rem;
-      margin-bottom: 4px;
-      opacity: 0.8;
-    }
-
-    .message-text {
-      font-size: 0.9rem;
-      line-height: 1.4;
-    }
-
-    .message-translated-below {
-      font-size: 0.8rem;
-      line-height: 1.3;
-      opacity: 0.6;
-      font-style: italic;
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .message-bubble.received .message-translated-below {
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .message-original {
-      font-size: 0.8rem;
-      line-height: 1.3;
-      opacity: 0.6;
-      font-style: italic;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .message-bubble.sent .message-original {
-      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .message-translated {
-      font-size: 0.9rem;
-      line-height: 1.4;
-    }
-
-    .message-badges {
-      margin-top: 6px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .message-badges .badge {
-      font-size: 0.7rem;
-      opacity: 0.9;
-    }
-
-    .message-status {
-      font-size: 0.65rem;
-      margin-top: 6px;
-      text-align: right;
-      opacity: 0.7;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 4px;
-    }
-
-    .message-status.sending {
-      color: #6c757d;
-    }
-
-    .message-status.delivered {
-      color: #28a745;
-    }
-
-    .message-status.failed {
-      color: #dc3545;
-    }
-
-    .status-icon {
-      font-size: 0.7rem;
-    }
-
-    .message-container {
-      display: flex;
-      width: 100%;
-      margin-bottom: 8px;
-    }
-
-    .message-container.received {
-      justify-content: flex-start;
-    }
-
-    .message-container.sent {
-      justify-content: flex-end;
-    }
-
-    /* Floating chat input bubble styling */
-    .chat-input-container {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-      z-index: 100;
-    }
-
-    .chat-input-bubble {
-      background: white;
-      border-radius: 25px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      padding: 15px 20px;
-      max-width: 800px;
-      margin: 0 auto;
-      border: 1px solid #e0e0e0;
-    }
-
-    .chat-input-form {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .chat-input-field {
-      flex: 1;
-      border: none;
-      outline: none;
-      padding: 8px 16px;
-      font-size: 16px;
-      background: #f8f9fa;
-      border-radius: 20px;
-      resize: none;
-      line-height: 1.4;
-    }
-
-    .chat-input-field:focus {
-      background: #fff;
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
-    }
-
-    .chat-send-button {
-      background: #007bff;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: white;
-      flex-shrink: 0;
-    }
-
-    .chat-send-button:hover {
-      background: #0056b3;
-      transform: scale(1.05);
-    }
-
-    .chat-send-button:disabled {
-      background: #6c757d;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .chat-options {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-
-    .chat-options input[type="checkbox"] {
-      margin-right: 6px;
-    }
-
-    .char-counter {
-      font-size: 0.75rem;
-      transition: color 0.2s ease;
-    }
-
-    .char-counter.warning {
-      color: #ffc107 !important;
-    }
-
-    .char-counter.danger {
-      color: #dc3545 !important;
-      font-weight: bold;
-    }
-
-    /* Adjust main container to account for floating input */
-    .chat-main-container {
-      padding-bottom: 120px !important;
-    }
-
-    /* Chat list screen styling */
-    .chats-list-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .chat-item {
-      background: white;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .chat-item:hover {
-      background: #f8f9fa;
-      border-color: #007bff;
-      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
-    }
-
-    .chat-item-info {
-      flex: 1;
-    }
-
-    .chat-item-name {
-      font-weight: bold;
-      font-size: 1rem;
-      margin-bottom: 4px;
-    }
-
-    .chat-item-preview {
-      color: #6c757d;
-      font-size: 0.9rem;
-    }
-
-    .chat-item-meta {
-      text-align: right;
-      font-size: 0.8rem;
-      color: #6c757d;
-    }
-
-    .new-chat-button {
-      position: absolute;
-      bottom: 30px;
-      right: 30px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #007bff;
-      border: none;
-      color: white;
-      font-size: 24px;
-      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    }
-
-    .new-chat-button:hover {
-      background: #0056b3;
-      transform: scale(1.1);
-    }
-
-    .chat-header {
-      background: white;
-      border-bottom: 1px solid #e0e0e0;
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .back-button {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      color: #007bff;
-      padding: 8px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s ease;
-    }
-
-    .back-button:hover {
-      background: #f8f9fa;
-    }
-
-    .chat-header-title {
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-
-    .new-chat-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-    }
-
-    .new-chat-content {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      max-width: 400px;
-      margin: 20px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Language badge styling */
-    .language-badge {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 4px 8px;
-      border-radius: 12px;
-      white-space: nowrap;
-    }
-
-    .language-badge-header {
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      color: white;
-      border: none;
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 6px 12px;
-      border-radius: 15px;
-      white-space: nowrap;
-    }
-
-    .language-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .language-separator {
-      opacity: 0.7;
-      margin: 0 2px;
-    }
-
-    /* Form validation styles */
-    .is-invalid {
-      border-color: #dc3545 !important;
-    }
-
-    .invalid-feedback {
-      width: 100%;
-      margin-top: 0.25rem;
-      font-size: 0.875rem;
-      color: #dc3545;
-      display: block;
-    }
-
-    .spinner-border-sm {
-      width: 1rem;
-      height: 1rem;
-    }
-  </style>
+    <title>Serverless Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
+    <script>
+        window.apiBaseUrl = 'http://localhost:7151';
+    </script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Main app container */
+        .app-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                margin: 10px;
+                border-radius: 12px;
+                min-height: calc(100vh - 20px);
+            }
+        }
+
+        .slide-fade-enter-active,
+        .slide-fade-leave-active {
+            transition: all 1s ease;
+        }
+
+        .slide-fade-enter,
+        .slide-fade-leave-to {
+            height: 0px;
+            overflow-y: hidden;
+            opacity: 0;
+        }
+
+        /* Custom scrollbar for messages area */
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .disclaimer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .disclaimer-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 500px;
+            margin: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .language-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .language-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 400px;
+            margin: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .failure-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .container-fluid,
+        .row,
+        .col,
+        .col-sm {
+            max-width: 100%;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            margin: 8px 0;
+            position: relative;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .message-bubble.received {
+            background-color: #007bff;
+            color: white;
+            margin-left: 0;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-bubble.sent {
+            background-color: #e9ecef;
+            color: #333;
+            margin-left: auto;
+            margin-right: 0;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-header {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message-translated-below {
+            font-size: 0.8rem;
+            line-height: 1.3;
+            opacity: 0.6;
+            font-style: italic;
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .message-bubble.received .message-translated-below {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .message-original {
+            font-size: 0.8rem;
+            line-height: 1.3;
+            opacity: 0.6;
+            font-style: italic;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .message-bubble.sent .message-original {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .message-translated {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message-badges {
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .message-badges .badge {
+            font-size: 0.7rem;
+            opacity: 0.9;
+        }
+
+        .message-status {
+            font-size: 0.65rem;
+            margin-top: 6px;
+            text-align: right;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .message-status.sending {
+            color: #6c757d;
+        }
+
+        .message-status.delivered {
+            color: #28a745;
+        }
+
+        .message-status.failed {
+            color: #dc3545;
+        }
+
+        .status-icon {
+            font-size: 0.7rem;
+        }
+
+        .message-container {
+            display: flex;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .message-container.received {
+            justify-content: flex-start;
+        }
+
+        .message-container.sent {
+            justify-content: flex-end;
+        }
+
+        /* Floating chat input bubble styling */
+        .chat-input-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .chat-input-bubble {
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 15px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chat-input-form {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-input-field {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 8px 16px;
+            font-size: 16px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            resize: none;
+            line-height: 1.4;
+        }
+
+        .chat-input-field:focus {
+            background: #fff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+        }
+
+        .chat-send-button {
+            background: #007bff;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .chat-send-button:hover {
+            background: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .chat-send-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .chat-options input[type="checkbox"] {
+            margin-right: 6px;
+        }
+
+        .char-counter {
+            font-size: 0.75rem;
+            transition: color 0.2s ease;
+        }
+
+        .char-counter.warning {
+            color: #ffc107 !important;
+        }
+
+        .char-counter.danger {
+            color: #dc3545 !important;
+            font-weight: bold;
+        }
+
+        /* Adjust main container to account for floating input */
+        .chat-main-container {
+            padding-bottom: 120px !important;
+        }
+
+        /* Chat list screen styling */
+        .chats-list-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .chat-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-item:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+
+        .chat-item-info {
+            flex: 1;
+        }
+
+        .chat-item-name {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .chat-item-preview {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .chat-item-meta {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .new-chat-button {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #007bff;
+            border: none;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .new-chat-button:hover {
+            background: #0056b3;
+            transform: scale(1.1);
+        }
+
+        .chat-header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #007bff;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+
+        .back-button:hover {
+            background: #f8f9fa;
+        }
+
+        .chat-header-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .new-chat-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .new-chat-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 400px;
+            margin: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Language badge styling */
+        .language-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+
+        .language-badge-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 15px;
+            white-space: nowrap;
+        }
+
+        .language-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .language-separator {
+            opacity: 0.7;
+            margin: 0 2px;
+        }
+
+        /* Form validation styles */
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+
+        .invalid-feedback {
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #dc3545;
+            display: block;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* User header styling */
+        .user-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .user-details h6 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .user-details small {
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+    </style>
 </head>
 
 <body>
-  <div id="app">
-    <div class="app-container">
-      <!-- Disclaimer Modal -->
-      <div v-if="showDisclaimer" class="disclaimer-modal">
-        <div class="disclaimer-content">
-          <h4 class="mb-3">Universal Translator Chat - Important Notice</h4>
-          <div class="alert alert-warning">
-            <strong>Privacy & Translation Notice:</strong>
-          </div>
-          <p><strong>Please read carefully before proceeding:</strong></p>
-          <ul class="text-left">
-            <li>All messages are <strong>stored locally only</strong> in your browser</li>
-            <li>Messages are sent to a translation backend for real-time translation</li>
-            <li><strong>Do not send sensitive or confidential information</strong> through this chat</li>
-            <li>Translation accuracy may vary - <strong>not all translations may be accurate</strong></li>
-            <li>This is a demonstration service and should not be used for critical communications</li>
-          </ul>
-          <p class="mt-3"><strong>By clicking "Accept", you certify that you understand these limitations and agree to
-              use this service responsibly.</strong></p>
-          <div class="mt-4">
-            <button @click="acceptDisclaimer" class="btn btn-success mr-2">Accept & Continue</button>
-            <button @click="denyDisclaimer" class="btn btn-danger">Deny</button>
-          </div>
-        </div>
-      </div> <!-- Language Selection Modal -->
-      <div v-if="showLanguageSelection" class="language-modal">
-        <div class="language-content">
-          <h4 class="mb-3">Setup Your Profile</h4>
-          <form @submit.prevent="completeSetup">
-            <div class="form-group">
-              <label for="username">Screen Name:</label>
-              <input type="text" id="username" v-model="setupUsername" class="form-control"
-                :class="{ 'is-invalid': setupUsernameError }" placeholder="Enter your screen name" required>
-              <div v-if="setupUsernameError" class="invalid-feedback">
-                {{ setupUsernameError }}
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="language">Preferred Language:</label>
-              <select id="language" v-model="setupLanguage" class="form-control" required
-                :disabled="isLoadingLanguages">
-                <option value="" v-if="isLoadingLanguages">Loading languages...</option>
-                <option value="" v-else>Select your language...</option>
-                <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code">
-                  {{ lang.nativeName }} ({{ lang.name }})
-                </option>
-              </select>
-            </div>
-            <div class="mt-4">
-              <button type="submit" class="btn btn-primary btn-block" :disabled="isCheckingUsername">
-                <span v-if="isCheckingUsername">
-                  <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
-                  Checking availability...
-                </span>
-                <span v-else>Start Chatting</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>      <!-- Failure Screen -->
-      <div v-if="showFailure" class="failure-screen">
-        <div class="text-center">
-          <div class="alert alert-danger">
-            <h2>Access Denied</h2>
-            <p class="lead">You must accept the terms and conditions to use this chat service.</p>
-            <p>Please refresh the page if you change your mind.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Session Timeout Screen -->
-      <div v-if="showSessionTimeout" class="failure-screen">
-        <div class="text-center">
-          <div class="alert alert-warning">
-            <h2>Session Timed Out</h2>
-            <p class="lead">Your session has timed out due to inactivity.</p>
-            <p>Please refresh the page to start a new session.</p>
-            <button @click="refreshPage" class="btn btn-primary mt-3">Refresh Page</button>
-          </div>
-        </div>
-      </div><!-- Chats List Screen -->
-      <div v-if="appReady && currentView === 'chats-list'" class="container-fluid d-flex flex-column"
-        style="height: 100%; position: relative; flex: 1;">
-        <div class="row" style="flex: 1;">
-          <div class="col">
-            <div class="chats-list-container" style="padding-top: 15px;">
-              <h3 class="mb-4">Your Chats</h3>
-              <div v-if="Object.keys(chats).length === 0" class="text-center text-muted py-5">
-                <h5>No chats yet</h5>
-                <p>Start a new conversation by clicking the + button</p>
-              </div>
-              <div v-for="(chat, chatId) in chats" :key="chatId" class="chat-item" @click="openChat(chatId)">
-                <div class="chat-item-info">
-                  <div class="chat-item-name">
-                    {{ getChatDisplayName(chat) }}
-                    <span class="badge language-badge ml-2">
-                      <span class="language-indicator">{{ getChatLanguagesDisplay(chat) }}</span>
-                    </span>
-                  </div>
-                  <div class="chat-item-preview">{{ getLastMessagePreview(chat) }}</div>
-                </div>
-                <div class="chat-item-meta">
-                  <div v-if="chat.messages.length > 0">{{ formatTime(chat.messages[chat.messages.length - 1].timestamp)
-                    }}</div>
-                  <div v-if="getUnreadCount(chat) > 0" class="badge badge-primary">{{ getUnreadCount(chat) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- New Chat Button -->
-        <button class="new-chat-button" @click="showNewChatModal = true">+</button>
-      </div>
-
-      <!-- Individual Chat Screen -->
-      <div v-if="appReady && currentView === 'chat'" class="container-fluid d-flex flex-column chat-main-container"
-        style="height: 100%; position: relative; flex: 1;">
-        <!-- Chat Header -->
-        <div class="chat-header">
-          <button class="back-button" @click="goToChatsListing">←</button>
-          <div class="chat-header-title">
-            {{ getCurrentChatDisplayName() }}
-            <span class="badge language-badge-header ml-2">
-              <span class="language-indicator">{{ getCurrentChatLanguagesDisplay() }}</span>
-            </span>
-          </div>
-        </div>
-
-        <div class="row" v-if="!ready" style="flex: 1;">
-          <div class="col">
-            <div class="d-flex align-items-center justify-content-center h-100">
-              <div>Connecting...</div>
-            </div>
-          </div>
-        </div>
-        <div v-if="ready" class="row" style="flex: 1; overflow: hidden; position: relative;">
-          <div class="col" style="display: flex; flex-direction: column; height: 100%;">
-            <!-- Messages area -->
-            <div class="messages-container" style="flex: 1; overflow-y: auto; padding: 20px; overflow-x: hidden;">
-              <transition-group name="slide-fade" tag="div">
-                <div v-for="message in getCurrentChatMessages()" v-bind:key="message.id"
-                  :class="['message-container', isMyMessage(message) ? 'sent' : 'received']">
-                  <div :class="['message-bubble', isMyMessage(message) ? 'sent' : 'received']">
-                    <div class="message-header">
-                      <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
-                      <span v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage"
-                        class="badge badge-light ml-1" style="font-size: 0.65rem; opacity: 0.8;">
-                        {{ getLanguageCode(message.SourceLanguage) }}
-                      </span>
-                      <span v-if="isMyMessage(message) && message.isTranslated && message.TargetLanguage"
-                        class="badge badge-info ml-1" style="font-size: 0.65rem; opacity: 0.9;">
-                        → {{ getLanguageCode(message.TargetLanguage) }}
-                      </span>
-                    </div> <!-- For sent messages: show original text first, then translated text below -->
-                    <div v-if="isMyMessage(message)">
-                      <div class="message-text">
-                        {{ message.OriginalText || message.Text || message.text }}
-                      </div>
-                      <!-- Show translated text below in dimmed color if translation occurred -->
-                      <div
-                        v-if="message.isTranslated && message.TranslatedText && message.TranslatedText !== (message.OriginalText || message.Text || message.text)"
-                        class="message-translated-below">
-                        {{ message.TranslatedText }}
-                      </div>
-                      <!-- Message Status for sent messages -->
-                      <div :class="['message-status', message.status || 'sending']">
-                        <span v-if="message.status === 'sending'" class="status-icon">⏳</span>
-                        <span v-if="message.status === 'delivered'" class="status-icon">✓</span>
-                        <span v-if="message.status === 'failed'" class="status-icon">✗</span>
-                        {{ getStatusText(message.status || 'sending') }}
-                      </div>
+    <div id="app">
+        <div class="app-container">
+            <!-- Disclaimer Modal -->
+            <div v-if="showDisclaimer" class="disclaimer-modal">
+                <div class="disclaimer-content">
+                    <h4 class="mb-3">Universal Translator Chat - Important Notice</h4>
+                    <div class="alert alert-warning">
+                        <strong>Privacy & Translation Notice:</strong>
                     </div>
-
-                    <!-- For received messages: show translated text (what we see) and optionally original text above -->
-                    <div v-else>
-                      <!-- Show original text if available and different from translated text -->
-                      <div
-                        v-if="message.OriginalText && message.TranslatedText && message.OriginalText !== message.TranslatedText"
-                        class="message-original">
-                        {{ message.OriginalText }}
-                      </div>
-                      <!-- Show the main message text (translated or original) -->
-                      <div class="message-text">
-                        {{ message.TranslatedText || message.Text || message.text }}
-                      </div>
+                    <p><strong>Please read carefully before proceeding:</strong></p>
+                    <ul class="text-left">
+                        <li>All messages are <strong>stored locally only</strong> in your browser</li>
+                        <li>Messages are sent to a translation backend for real-time translation</li>
+                        <li><strong>Do not send sensitive or confidential information</strong> through this chat</li>
+                        <li>Translation accuracy may vary - <strong>not all translations may be accurate</strong></li>
+                        <li>This is a demonstration service and should not be used for critical communications</li>
+                    </ul>
+                    <p class="mt-3">
+                        <strong>
+                            By clicking "Accept", you certify that you understand these limitations and agree to
+                            use this service responsibly.
+                        </strong>
+                    </p>
+                    <div class="mt-4">
+                        <button @click="acceptDisclaimer" class="btn btn-success mr-2">Accept & Continue</button>
+                        <button @click="denyDisclaimer" class="btn btn-danger">Deny</button>
                     </div>
-                  </div>
                 </div>
-              </transition-group>
+            </div> <!-- Language Selection Modal -->
+            <div v-if="showLanguageSelection" class="language-modal">
+                <div class="language-content">
+                    <h4 class="mb-3">Setup Your Profile</h4>
+                    <form @submit.prevent="completeSetup">
+                        <div class="form-group">
+                            <label for="username">Screen Name:</label>
+                            <input type="text" id="username" v-model="setupUsername" class="form-control"
+                                :class="{ 'is-invalid': setupUsernameError }" placeholder="Enter your screen name"
+                                required>
+                            <div v-if="setupUsernameError" class="invalid-feedback">
+                                {{ setupUsernameError }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="language">Preferred Language:</label>
+                            <select id="language" v-model="setupLanguage" class="form-control" required
+                                :disabled="isLoadingLanguages">
+                                <option value="" v-if="isLoadingLanguages">Loading languages...</option>
+                                <option value="" v-else>Select your language...</option>
+                                <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code">
+                                    {{ lang.nativeName }} ({{ lang.name }})
+                                </option>
+                            </select>
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-block" :disabled="isCheckingUsername">
+                                <span v-if="isCheckingUsername">
+                                    <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
+                                    Checking availability...
+                                </span>
+                                <span v-else>Start Chatting</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div> <!-- Failure Screen -->
+            <div v-if="showFailure" class="failure-screen">
+                <div class="text-center">
+                    <div class="alert alert-danger">
+                        <h2>Access Denied</h2>
+                        <p class="lead">You must accept the terms and conditions to use this chat service.</p>
+                        <p>Please refresh the page if you change your mind.</p>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            <!-- Session Timeout Screen -->
+            <div v-if="showSessionTimeout" class="failure-screen">
+                <div class="text-center">
+                    <div class="alert alert-warning">
+                        <h2>Session Timed Out</h2>
+                        <p class="lead">Your session has timed out due to inactivity.</p>
+                        <p>Please refresh the page to start a new session.</p>
+                        <button @click="refreshPage" class="btn btn-primary mt-3">Refresh Page</button>
+                    </div>
+                </div>
+            </div><!-- Chats List Screen -->
+            <div v-if="appReady && currentView === 'chats-list'" class="container-fluid d-flex flex-column"
+                style="height: 100%; position: relative; flex: 1;">
+
+                <!-- User Header -->
+                <div class="user-header">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            {{ username.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="user-details">
+                            <h6>{{ username }}</h6>
+                            <small>{{ getUserLanguageName() }}</small>
+                        </div>
+                    </div>
+                    <div class="user-status">
+                        <div class="status-dot"></div>
+                        <span>Online</span>
+                    </div>
+                </div>
+
+                <div class="row" style="flex: 1;">
+                    <div class="col">
+                        <div class="chats-list-container" style="padding-top: 15px;">
+                            <h3 class="mb-4">Your Chats</h3>
+                            <div v-if="Object.keys(chats).length === 0" class="text-center text-muted py-5">
+                                <h5>No chats yet</h5>
+                                <p>Start a new conversation by clicking the + button</p>
+                            </div>
+                            <div v-for="(chat, chatId) in chats" :key="chatId" class="chat-item"
+                                @click="openChat(chatId)">
+                                <div class="chat-item-info">
+                                    <div class="chat-item-name">
+                                        {{ getChatDisplayName(chat) }}
+                                        <span class="badge language-badge ml-2">
+                                            <span class="language-indicator">{{ getChatLanguagesDisplay(chat) }}</span>
+                                        </span>
+                                    </div>
+                                    <div class="chat-item-preview">{{ getLastMessagePreview(chat) }}</div>
+                                </div>
+                                <div class="chat-item-meta">
+                                    <div v-if="chat.messages.length > 0">
+                                        {{
+                                        formatTime(chat.messages[chat.messages.length - 1].timestamp)
+                                        }}
+                                    </div>
+                                    <div v-if="getUnreadCount(chat) > 0" class="badge badge-primary">{{
+                                        getUnreadCount(chat) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Chat Button -->
+                <button class="new-chat-button" @click="showNewChatModal = true">+</button>
+            </div>
+
+            <!-- Individual Chat Screen -->
+            <div v-if="appReady && currentView === 'chat'"
+                class="container-fluid d-flex flex-column chat-main-container"
+                style="height: 100%; position: relative; flex: 1;">
+
+                <!-- User Header -->
+                <div class="user-header">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            {{ username.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="user-details">
+                            <h6>{{ username }}</h6>
+                            <small>{{ getUserLanguageName() }}</small>
+                        </div>
+                    </div>
+                    <div class="user-status">
+                        <div class="status-dot"></div>
+                        <span>Online</span>
+                    </div>
+                </div>
+
+                <!-- Chat Header -->
+                <div class="chat-header">
+                    <button class="back-button" @click="goToChatsListing">←</button>
+                    <div class="chat-header-title">
+                        {{ getCurrentChatDisplayName() }}
+                        <span class="badge language-badge-header ml-2">
+                            <span class="language-indicator">{{ getCurrentChatLanguagesDisplay() }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row" v-if="!ready" style="flex: 1;">
+                    <div class="col">
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div>Connecting...</div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="ready" class="row" style="flex: 1; overflow: hidden; position: relative;">
+                    <div class="col" style="display: flex; flex-direction: column; height: 100%;">
+                        <!-- Messages area -->
+                        <div class="messages-container"
+                            style="flex: 1; overflow-y: auto; padding: 20px; overflow-x: hidden;">
+                            <transition-group name="slide-fade" tag="div">
+                                <div v-for="message in getCurrentChatMessages()" v-bind:key="message.id"
+                                    :class="['message-container', isMyMessage(message) ? 'sent' : 'received']">
+                                    <div :class="['message-bubble', isMyMessage(message) ? 'sent' : 'received']">
+                                        <div class="message-header">
+                                            <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
+                                            <span
+                                                v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage"
+                                                class="badge badge-light ml-1"
+                                                style="font-size: 0.65rem; opacity: 0.8;">
+                                                {{ getLanguageCode(message.SourceLanguage) }}
+                                            </span>
+                                            <span
+                                                v-if="isMyMessage(message) && message.isTranslated && message.TargetLanguage"
+                                                class="badge badge-info ml-1" style="font-size: 0.65rem; opacity: 0.9;">
+                                                → {{ getLanguageCode(message.TargetLanguage) }}
+                                            </span>
+                                        </div>
+                                        <!-- For sent messages: show original text first, then translated text below -->
+                                        <div v-if="isMyMessage(message)">
+                                            <div class="message-text">
+                                                {{ message.OriginalText || message.Text || message.text }}
+                                            </div>
+                                            <!-- Show translated text below in dimmed color if translation occurred -->
+                                            <div v-if="message.isTranslated && message.TranslatedText && message.TranslatedText !== (message.OriginalText || message.Text || message.text)"
+                                                class="message-translated-below">
+                                                {{ message.TranslatedText }}
+                                            </div>
+                                            <!-- Message Status for sent messages -->
+                                            <div :class="['message-status', message.status || 'sending']">
+                                                <span v-if="message.status === 'sending'" class="status-icon">⏳</span>
+                                                <span v-if="message.status === 'delivered'" class="status-icon">✓</span>
+                                                <span v-if="message.status === 'failed'" class="status-icon">✗</span>
+                                                {{ getStatusText(message.status || 'sending') }}
+                                            </div>
+                                        </div>
+
+                                        <!-- For received messages: show translated text (what we see) and optionally original text above -->
+                                        <div v-else>
+                                            <!-- Show original text if available and different from translated text -->
+                                            <div v-if="message.OriginalText && message.TranslatedText && message.OriginalText !== message.TranslatedText"
+                                                class="message-original">
+                                                {{ message.OriginalText }}
+                                            </div>
+                                            <!-- Show the main message text (translated or original) -->
+                                            <div class="message-text">
+                                                {{ message.TranslatedText || message.Text || message.text }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </transition-group>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating chat input (only shown in chat view) -->
+                <div v-if="ready" class="chat-input-container">
+                    <div class="chat-input-bubble">
+                        <div class="chat-options">
+                            <span
+                                :class="['char-counter', 'text-muted', { 'warning': newMessage.length > 200, 'danger': newMessage.length > 240 }]">
+                                {{ newMessage.length }}/256 characters
+                            </span>
+                        </div>
+                        <form v-on:submit.prevent="sendNewMessage()" class="chat-input-form">
+                            <input type="text" v-model="newMessage" id="message-box" class="chat-input-field"
+                                placeholder="Type message here..." maxlength="256" />
+                            <button type="submit" class="chat-send-button" :disabled="!newMessage.trim()">
+                                ➤
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End app-container -->
+        <!-- New Chat Modal -->
+        <div v-if="showNewChatModal" class="new-chat-modal">
+            <div class="new-chat-content">
+                <h4 class="mb-3">Start New Chat</h4>
+                <form @submit.prevent="createNewChat">
+                    <div class="form-group">
+                        <label for="newChatUser">Enter username to chat with:</label>
+                        <input type="text" id="newChatUser" v-model="newChatUsername" class="form-control"
+                            placeholder="Username" required>
+                        <div v-if="newChatError" class="invalid-feedback" style="display: block;">
+                            {{ newChatError }}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary mr-2" :disabled="isCheckingUserOnline">
+                            <span v-if="isCheckingUserOnline">
+                                <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
+                                Checking availability...
+                            </span>
+                            <span v-else>Start Chat</span>
+                        </button>
+                        <button type="button" @click="showNewChatModal = false"
+                            class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <!-- Floating chat input (only shown in chat view) -->
-        <div v-if="ready" class="chat-input-container">
-          <div class="chat-input-bubble">
-            <div class="chat-options">
-              <span
-                :class="['char-counter', 'text-muted', { 'warning': newMessage.length > 200, 'danger': newMessage.length > 240 }]">
-                {{ newMessage.length }}/256 characters
-              </span>
-            </div>
-            <form v-on:submit.prevent="sendNewMessage()" class="chat-input-form">
-              <input type="text" v-model="newMessage" id="message-box" class="chat-input-field"
-                placeholder="Type message here..." maxlength="256" />
-              <button type="submit" class="chat-send-button" :disabled="!newMessage.trim()">
-                ➤
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div> <!-- End app-container -->
-    <!-- New Chat Modal -->
-    <div v-if="showNewChatModal" class="new-chat-modal">
-      <div class="new-chat-content">
-        <h4 class="mb-3">Start New Chat</h4>
-        <form @submit.prevent="createNewChat">
-          <div class="form-group">
-            <label for="newChatUser">Enter username to chat with:</label>
-            <input type="text" id="newChatUser" v-model="newChatUsername" class="form-control" placeholder="Username"
-              required>
-            <div v-if="newChatError" class="invalid-feedback" style="display: block;">
-              {{ newChatError }}
-            </div>
-          </div>
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary mr-2" :disabled="isCheckingUserOnline">
-              <span v-if="isCheckingUserOnline">
-                <span class="spinner-border spinner-border-sm mr-2" role="status"></span>
-                Checking availability...
-              </span>
-              <span v-else>Start Chat</span>
-            </button>
-            <button type="button" @click="showNewChatModal = false" class="btn btn-secondary">Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    </div> <!-- End Vue app -->
 
-  </div> <!-- End Vue app -->
-
-  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios@0.18.0/dist/axios.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/crypto-js.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/enc-base64.js"></script>
-  <script>
-    const app = new Vue({
-      el: '#app',      data: function () {
-        return {
-          // Modal states
-          showDisclaimer: true,
-          showLanguageSelection: false,
-          showFailure: false,
-          showSessionTimeout: false,
-          appReady: false,
-          showNewChatModal: false,
-          // Setup data
-          setupUsername: '',
-          setupLanguage: '',
-          setupUsernameError: '',
-          isCheckingUsername: false,
-          isCheckingUserOnline: false,
-          supportedLanguages: [], // Will be populated from backend
-          isLoadingLanguages: false,
-          // Chat system data
-          username: '',
-          userLanguage: 'en',
-          currentView: 'chats-list', // 'chats-list' or 'chat'
-          currentChatId: null,
-          chats: {}, // Object to store all chat conversations
-          newMessage: '',
-          newChatUsername: '',
-          newChatError: '',
-          myConnectionId: '',
-          ready: false,
-          messageCounter: 0,
-          connection: null,
-          isDemoMode: false, // Flag to indicate demo mode vs live mode
-          visibilityTimeout: null // Timeout for delayed user cleanup
-        };
-      },
-      methods: {
-        acceptDisclaimer: function () {
-          this.showDisclaimer = false;
-          this.showLanguageSelection = true;
-        },
-
-        denyDisclaimer: function () {
-          this.showDisclaimer = false;
-          this.showFailure = true;
-        },
-        completeSetup: async function () {
-          if (this.setupUsername.trim() && this.setupLanguage) {
-            this.setupUsernameError = '';
-            this.isCheckingUsername = true;
-
-            try {
-              // Check username availability first
-              const isAvailable = await this.checkUsernameAvailability(this.setupUsername.trim());
-
-              if (!isAvailable) {
-                this.setupUsernameError = 'This username is already taken. Please choose a different one.';
-                this.isCheckingUsername = false;
-                return;
-              }
-
-              // Username is available, proceed with setup
-              this.username = this.setupUsername.trim();
-              this.userLanguage = this.setupLanguage;
-              this.showLanguageSelection = false;
-              this.appReady = true;
-              this.currentView = 'chats-list';
-
-              // In demo mode, skip SignalR connection
-              if (!this.isDemoMode) {
-                this.initializeConnection();
-              } else {
-                this.ready = true; // Set ready immediately for demo mode
-              }
-
-            } catch (error) {
-              console.error('Error checking username availability:', error);
-              this.setupUsernameError = 'Unable to verify username availability. Please try again.';
-            } finally {
-              this.isCheckingUsername = false;
-            }
-          }
-        },
-
-        initializeConnection: function () {
-          const apiBaseUrl = window.location.origin;
-          const isAdmin = false; // You can add admin selection to the setup if needed
-
-          const connection = new signalR.HubConnectionBuilder()
-            .withUrl(apiBaseUrl + '/api', {
-              accessTokenFactory: () => {
-                return this.generateAccessToken(this.username)
-              }
-            })
-            .withStatefulReconnect()
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
-
-          connection.on('newMessage', this.onNewMessage);
-          connection.on('newConnection', this.onNewConnection);
-          connection.onclose(() => console.log('disconnected'));
-
-          console.log('connecting...'); connection.start()
-            .then(() => {
-              this.ready = true;
-              console.log('connected!');
-              this.registerUserWithBackend();
-            })
-            .catch(console.error);
-
-          this.connection = connection;
-        },
-        generateAccessToken: function (username) {
-          // Generate a simple token for demo purposes
-          return btoa(JSON.stringify({
-            username: username,
-            language: this.userLanguage,
-            timestamp: Date.now()
-          }));
-        }, checkUsernameAvailability: async function (username) {
-          // In demo mode, simulate availability check
-          if (this.isDemoMode) {
-            // Simulate some taken usernames for demo
-            const takenUsernames = ['admin', 'test', 'demo', 'user', 'guest'];
-            return !takenUsernames.includes(username.toLowerCase());
-          }
-
-          try {
-            const availabilityResponse = await fetch(`${window.location.origin}/api/IsUserOnline/${username}`);
-            const availabilityData = await availabilityResponse.json();
-            return availabilityData.IsOnline == false;
-          } catch (error) {
-            console.error('Username is not available:', error);
-            throw error;
-          }
-        },
-
-        registerUserWithBackend: async function () {
-          // Username availability has already been checked during setup
-          // This method is now called after successful SignalR connection
-          // and serves as a confirmation registration step
-          try {
-            console.log(`User ${this.username} registered successfully with language: ${this.userLanguage}`);
-          } catch (error) {
-            console.error('Error during user registration confirmation:', error);
-          }
-        },
-
-        registerUsersToChat: async function (groupName, userIds) {
-          try {
-            // Register each user to the chat group
-            for (const userId of userIds) {
-              const chatMember = {
-                GroupName: groupName,
-                UserId: userId,
-                Language: userId === this.username ? this.userLanguage : 'en', // Default to 'en' for other users
-                ConnectionId: userId === this.username ? this.myConnectionId : null
-              }; const response = await fetch(`${window.location.origin}/api/AddChatMember`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(chatMember)
-              });
-
-              if (response.ok) {
-                console.log(`User ${userId} registered to chat group ${groupName}`);
-              } else if (response.status === 409) {
-                console.log(`User ${userId} already exists in chat group ${groupName}`);
-              } else {
-                console.error(`Failed to register user ${userId} to chat group ${groupName}`);
-              }
-            }
-          } catch (error) {
-            console.error('Error registering users to chat group:', error);
-          }
-        }, checkUserOnlineStatus: async function (username) {
-          try {
-            const response = await fetch(`${window.location.origin}/api/isuseronline/${encodeURIComponent(username)}`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              return data.IsOnline;
-            } else {
-              console.error(`Failed to check online status for user ${username}:`, response.status);
-              return false; // Assume offline on error
-            }
-          } catch (error) {
-            console.error('Error checking user online status:', error);
-            return false; // Assume offline on error
-          }
-        },
-
-        // Chat management methods
-        openChat: function (chatId) {
-          this.currentChatId = chatId;
-          this.currentView = 'chat';
-          if (this.chats[chatId]) {
-            this.chats[chatId].unread = 0; // Mark as read
-          }
-          this.$nextTick(() => {
-            this.scrollToBottom();
-          });
-        },
-
-        goToChatsListing: function () {
-          this.currentView = 'chats-list';
-          this.currentChatId = null;
-        },
-        createNewChat: async function () {
-          const otherUser = this.newChatUsername.trim();
-          if (otherUser && otherUser !== this.username) {
-            this.newChatError = '';
-            this.isCheckingUserOnline = true;
-
-            try {
-              // Check if the target user is online
-              const isUserOnline = await this.checkUserOnlineStatus(otherUser);
-
-              if (!isUserOnline) {
-                this.newChatError = `User '${otherUser}' is not online. You can only start chats with online users.`;
-                this.isCheckingUserOnline = false;
-                return;
-              }
-
-              // User is online, proceed to create chat
-              const chatId = this.generateChatId(this.username, otherUser);
-
-              if (!this.chats[chatId]) {
-                this.chats[chatId] = {
-                  participants: [this.username, otherUser],
-                  messages: [],
-                  unread: 0,
-                  lastActivity: new Date()
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.18.0/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/crypto-js.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@3.1.9-1/enc-base64.js"></script>
+    <script>
+        const app = new Vue({
+            el: '#app', data: function () {
+                return {
+                    // Modal states
+                    showDisclaimer: true,
+                    showLanguageSelection: false,
+                    showFailure: false,
+                    showSessionTimeout: false,
+                    appReady: false,
+                    showNewChatModal: false,
+                    // Setup data
+                    setupUsername: '',
+                    setupLanguage: '',
+                    setupUsernameError: '',
+                    isCheckingUsername: false,
+                    isCheckingUserOnline: false,
+                    supportedLanguages: [], // Will be populated from backend
+                    isLoadingLanguages: false,
+                    // Chat system data
+                    username: '',
+                    userLanguage: 'en',
+                    currentView: 'chats-list', // 'chats-list' or 'chat'
+                    currentChatId: null,
+                    chats: {}, // Object to store all chat conversations
+                    newMessage: '',
+                    newChatUsername: '',
+                    newChatError: '',
+                    myConnectionId: '',
+                    ready: false,
+                    messageCounter: 0,
+                    connection: null,
+                    isDemoMode: false, // Flag to indicate demo mode vs live mode
+                    visibilityTimeout: null // Timeout for delayed user cleanup
                 };
-
-                // Register both users to this chat group in the backend
-                if (!this.isDemoMode) {
-                  this.registerUsersToChat(chatId, [this.username, otherUser]);
-                }
-              }
-
-              this.showNewChatModal = false;
-              this.newChatUsername = '';
-              this.newChatError = '';
-              this.openChat(chatId);
-
-            } catch (error) {
-              console.error('Error checking user online status:', error);
-              this.newChatError = 'Unable to verify user status. Please try again.';
-            } finally {
-              this.isCheckingUserOnline = false;
-            }
-          }
-        },
-
-        generateChatId: function (user1, user2) {
-          // Generate consistent chat ID regardless of user order
-          return [user1, user2].sort().join('_');
-        },
-
-        getChatDisplayName: function (chat) {
-          // Return the other participant's name
-          return chat.participants.find(p => p !== this.username) || 'Unknown';
-        },
-
-        getCurrentChatDisplayName: function () {
-          if (this.currentChatId && this.chats[this.currentChatId]) {
-            return this.getChatDisplayName(this.chats[this.currentChatId]);
-          }
-          return 'Chat';
-        },
-
-        getCurrentChatMessages: function () {
-          if (this.currentChatId && this.chats[this.currentChatId]) {
-            return this.chats[this.currentChatId].messages;
-          }
-          return [];
-        },
-
-        getLastMessagePreview: function (chat) {
-          if (chat.messages.length === 0) {
-            return 'No messages yet';
-          }
-          const lastMessage = chat.messages[chat.messages.length - 1];
-          const text = lastMessage.Text || lastMessage.text || '';
-          return text.length > 50 ? text.substring(0, 50) + '...' : text;
-        },
-
-        getUnreadCount: function (chat) {
-          return chat.unread || 0;
-        },
-
-        formatTime: function (timestamp) {
-          if (!timestamp) return '';
-          const date = new Date(timestamp);
-          const now = new Date();
-          const diff = now - date;
-
-          if (diff < 60000) return 'Just now'; // Less than 1 minute
-          if (diff < 3600000) return Math.floor(diff / 60000) + 'm'; // Less than 1 hour
-          if (diff < 86400000) return Math.floor(diff / 3600000) + 'h'; // Less than 1 day
-          return date.toLocaleDateString();
-        }, sendNewMessage: function () {
-          if (this.newMessage.trim() && this.currentChatId) {
-            const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-            if (this.isDemoMode) {                // Demo mode - local simulation
-              const message = {
-                id: this.messageCounter++,
-                Sender: this.username,
-                Text: this.newMessage,
-                OriginalText: this.newMessage,
-                TranslatedText: null, // Pre-define for Vue reactivity
-                SourceLanguage: null, // Pre-define for Vue reactivity
-                TargetLanguage: null, // Pre-define for Vue reactivity
-                timestamp: new Date(),
-                isTranslated: false,
-                status: 'sending' // Initial status
-              };
-
-              this.chats[this.currentChatId].messages.push(message);
-              this.chats[this.currentChatId].lastActivity = new Date();
-              // Simulate translation response in demo mode
-              setTimeout(() => {
-                // Get the target user's language (for demo, simulate different users having different languages)
-                const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-                const targetLanguage = this.getTargetUserLanguage(otherUser);
-
-                // Simulate translation result based on target language
-                const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
-
-                // Update the message with translation
-                this.$set(message, 'TranslatedText', translatedText);
-                this.$set(message, 'SourceLanguage', this.userLanguage);
-                this.$set(message, 'TargetLanguage', targetLanguage);
-                this.$set(message, 'isTranslated', true);
-                this.$set(message, 'status', 'delivered');
-
-                this.$forceUpdate();
-              }, 500);
-
-              this.newMessage = '';
-
-              this.$nextTick(() => {
-                this.scrollToBottom();
-              });
-
-              // Simulate a response in demo mode after a short delay
-              setTimeout(() => {
-                this.simulateResponse();
-              }, 1000 + Math.random() * 2000);
-            } else {
-              // Live mode - send via backend HTTP API for translation
-              this.sendMessageViaBackend(otherUser, this.newMessage);                // Add to local chat immediately for better UX
-              const message = {
-                id: this.messageCounter++,
-                Sender: this.username,
-                Text: this.newMessage,
-                OriginalText: this.newMessage, // Store original text
-                TranslatedText: null, // Pre-define for Vue reactivity
-                SourceLanguage: null, // Pre-define for Vue reactivity
-                TargetLanguage: null, // Pre-define for Vue reactivity
-                timestamp: new Date(),
-                isPrivate: true,
-                isTranslated: false, // Will be updated when response comes back
-                status: 'sending' // Initial status
-              };
-
-              this.chats[this.currentChatId].messages.push(message);
-              this.chats[this.currentChatId].lastActivity = new Date();
-              this.newMessage = '';
-
-              this.$nextTick(() => {
-                this.scrollToBottom();
-              });
-            }
-          }
-        },
-
-        sendMessageViaBackend: async function (targetUserId, message) {
-          try {
-            const userMessage = {
-              GroupName: this.currentChatId, // Use the chat ID as the group name
-              SourceUserId: this.username,
-              TargetUserId: targetUserId,
-              Message: message,
-              TimeStamp: new Date().toISOString()
-            }; const response = await fetch(`${window.location.origin}/api/SendMessageToUser`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(userMessage)
-            });
-
-            if (response.ok) {
-              // Parse the response to get translation details
-              const translationResult = await response.json();
-              console.log('Message sent and translated:', translationResult);
-
-              // Update the local message with translation details
-              if (this.currentChatId && this.chats[this.currentChatId]) {
-                const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-                if (lastMessage && lastMessage.Sender === this.username && !lastMessage.isTranslated) {
-                  // Update the last sent message with translation details
-                  lastMessage.OriginalText = translationResult.OriginalText;
-                  lastMessage.TranslatedText = translationResult.TranslatedText;
-                  lastMessage.SourceLanguage = translationResult.SourceLanguage;
-                  lastMessage.TargetLanguage = translationResult.TargetLanguage;
-                  lastMessage.isTranslated = true;
-                  lastMessage.status = 'delivered';
-
-                  // Force Vue to re-render the message
-                  this.$forceUpdate();
-                }
-              }
-            } else {
-              console.error('Failed to send message via backend');
-              // Mark message as failed
-              if (this.currentChatId && this.chats[this.currentChatId]) {
-                const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-                if (lastMessage && lastMessage.Sender === this.username) {
-                  lastMessage.status = 'failed';
-                  this.$forceUpdate();
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error sending message via backend:', error);
-            // Mark message as failed on network error
-            if (this.currentChatId && this.chats[this.currentChatId]) {
-              const lastMessage = this.chats[this.currentChatId].messages[this.chats[this.currentChatId].messages.length - 1];
-              if (lastMessage && lastMessage.Sender === this.username) {
-                lastMessage.status = 'failed';
-                this.$forceUpdate();
-              }
-            }
-          }
-        },
-
-        simulateResponse: function () {
-          if (this.currentChatId && this.chats[this.currentChatId]) {
-            const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
-            const responses = [
-              "That's interesting!",
-              "I see what you mean.",
-              "Thanks for letting me know.",
-              "Sounds good to me!",
-              "I'll think about it.",
-              "Great idea!",
-              "Could you tell me more?",
-              "I agree with you."
-            ];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-
-            // Get the other user's language and simulate translation
-            const otherUserLanguage = this.getTargetUserLanguage(otherUser);
-            const translatedToMyLanguage = this.simulateTranslation(randomResponse, otherUserLanguage, this.userLanguage);
-
-            const responseMessage = {
-              id: this.messageCounter++,
-              Sender: otherUser,
-              Text: translatedToMyLanguage, // What we see (translated)
-              OriginalText: randomResponse, // What they actually typed
-              TranslatedText: translatedToMyLanguage, // What we see (translated)
-              SourceLanguage: otherUserLanguage, // Their language
-              TargetLanguage: this.userLanguage, // Our language
-              timestamp: new Date(),
-              isTranslated: true
-            };
-
-            this.chats[this.currentChatId].messages.push(responseMessage);
-            this.chats[this.currentChatId].lastActivity = new Date();
-
-            // If not viewing this chat, increment unread count
-            if (this.currentView !== 'chat' || this.currentChatId !== this.currentChatId) {
-              this.chats[this.currentChatId].unread = (this.chats[this.currentChatId].unread || 0) + 1;
-            }
-
-            this.$nextTick(() => {
-              this.scrollToBottom();
-            });
-          }
-        }, onNewMessage: function (messageData) {
-          // Handle incoming translated messages from SignalR
-          // messageData now contains: { OriginalText, TranslatedText, SourceUserId, TargetUserId, SourceLanguage, TargetLanguage }
-
-          const message = {
-            id: this.messageCounter++,
-            Sender: messageData.SourceUserId || messageData.sender || messageData.Sender,
-            Text: messageData.TranslatedText || messageData.text || messageData.Text || messageData,
-            OriginalText: messageData.OriginalText,
-            TranslatedText: messageData.TranslatedText,
-            SourceLanguage: messageData.SourceLanguage,
-            TargetLanguage: messageData.TargetLanguage,
-            timestamp: new Date(),
-            isTranslated: true
-          };
-
-          // Determine which chat this message belongs to
-          const sender = message.Sender;
-          let chatId;
-
-          if (sender === this.username) {
-            // This is our own message, find the chat based on current context
-            chatId = this.currentChatId;
-          } else {
-            // This is a message from another user
-            chatId = this.generateChatId(this.username, sender);
-
-            // Create chat if it doesn't exist
-            if (!this.chats[chatId]) {
-              this.chats[chatId] = {
-                participants: [this.username, sender],
-                messages: [],
-                unread: 0,
-                lastActivity: new Date()
-              };
-            }
-          }
-
-          if (chatId && this.chats[chatId]) {
-            this.chats[chatId].messages.push(message);
-            this.chats[chatId].lastActivity = new Date();
-
-            // If not viewing this chat, increment unread count
-            if (this.currentView !== 'chat' || this.currentChatId !== chatId) {
-              this.chats[chatId].unread = (this.chats[chatId].unread || 0) + 1;
-            }
-
-            this.$nextTick(() => {
-              if (this.currentChatId === chatId) {
-                this.scrollToBottom();
-              }
-            });
-          }
-        },
-
-        onNewConnection: function (connectionInfo) {
-          console.log('New connection:', connectionInfo);
-          this.myConnectionId = connectionInfo.ConnectionId || connectionInfo.connectionId;
-          console.log('Connected with ID:', this.myConnectionId);
-        },
-
-        generateAccessToken: function (userName) {
-          const header = {
-            "alg": "HS256",
-            "typ": "JWT"
-          };
-
-          const stringifiedHeader = CryptoJS.enc.Utf8.parse(JSON.stringify(header));
-          const encodedHeader = this.base64url(stringifiedHeader);
-
-          // customize your JWT token payload here
-          const tokenData = {
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": userName,
-            "exp": 1699819025,
-            'admin': false,
-            'language': this.userLanguage
-          };
-
-          const stringifiedData = CryptoJS.enc.Utf8.parse(JSON.stringify(tokenData));
-          const encodedData = this.base64url(stringifiedData);
-
-          const token = encodedHeader + "." + encodedData;
-          const secret = "myfunctionauthtest"; // do not expose your secret here
-
-          const signature = CryptoJS.HmacSHA256(token, secret);
-          const encodedSignature = this.base64url(signature);
-
-          return token + "." + encodedSignature;
-        },
-
-        base64url: function (source) {
-          // Encode in classical base64
-          let encodedSource = CryptoJS.enc.Base64.stringify(source);
-
-          // Remove padding equal characters
-          encodedSource = encodedSource.replace(/=+$/, '');
-
-          // Replace characters according to base64url specifications
-          encodedSource = encodedSource.replace(/\+/g, '-');
-          encodedSource = encodedSource.replace(/\//g, '_');
-
-          return encodedSource;
-        },
-        isMyMessage: function (message) {
-          return (message.Sender || message.sender) === this.username;
-        }, getLanguageCode: function (languageCode) {
-          // Simply return the language code in uppercase - no need for hardcoded mappings
-          // The language code comes from the SignalR message and is already correct
-          return languageCode ? languageCode.toUpperCase() : '';
-        },
-
-        getStatusText: function (status) {
-          switch (status) {
-            case 'sending': return 'Sending...';
-            case 'delivered': return 'Delivered';
-            case 'failed': return 'Failed to send';
-            default: return 'Sending...';
-          }
-        },
-        scrollToBottom: function () {
-          const messagesContainer = document.querySelector('.messages-container') ||
-            document.querySelector('[style*="overflow-y: auto"]');
-          if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-          }
-        }, getChatLanguages: function (chat) {
-          // Get unique source languages used in this chat
-          const sourceLanguages = new Set();
-
-          // Add user's language
-          sourceLanguages.add(this.userLanguage);
-
-          // Add source languages from translated messages (original languages people wrote in)
-          chat.messages.forEach(message => {
-            if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
-              sourceLanguages.add(message.SourceLanguage);
-            }
-          });
-
-          // Convert language codes to names
-          const languageNames = Array.from(sourceLanguages).map(code => {
-            const lang = this.supportedLanguages.find(l => l.code === code);
-            return lang ? lang.name.split(' ')[0] : code.toUpperCase(); // Use first word of language name
-          });
-
-          return languageNames.join(' ↔ ');
-        },
-        getChatLanguagesDisplay: function (chat) {
-          // Enhanced language display - show unique source languages used in conversation
-          const sourceLanguages = new Set();
-
-          // Add user's language as one of the languages
-          sourceLanguages.add(this.userLanguage);
-
-          // Add source languages from translated messages (these are the original languages people wrote in)
-          chat.messages.forEach(message => {
-            if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
-              sourceLanguages.add(message.SourceLanguage);
-            }
-          });
-
-          // If no other languages detected, this is likely a single-language chat
-          if (sourceLanguages.size === 1) {
-            return this.getLanguageCode(this.userLanguage);
-          }
-
-          // Convert language codes to short names
-          const languageNames = Array.from(sourceLanguages).map(code => {
-            return this.getLanguageCode(code);
-          });
-
-          return languageNames.join(' ⟷ ');
-        },
-        getCurrentChatLanguages: function () {
-          if (this.currentChatId && this.chats[this.currentChatId]) {
-            return this.getChatLanguages(this.chats[this.currentChatId]);
-          }
-          return '';
-        },
-        getCurrentChatLanguagesDisplay: function () {
-          if (this.currentChatId && this.chats[this.currentChatId]) {
-            return this.getChatLanguagesDisplay(this.chats[this.currentChatId]);
-          }
-          return '';
-        },
-        getTargetUserLanguage: function (username) {
-          // In demo mode, simulate different users having different languages
-          // This could be extended to store actual user language preferences
-          const userLanguageMap = {
-            'alice': 'fr',  // French
-            'bob': 'es',    // Spanish
-            'charlie': 'de', // German
-            'diana': 'it',
-            'erik': 'pt',
-            'fiona': 'ru',
-            'george': 'ja',
-            'hannah': 'ko',
-            'ivan': 'zh',
-            'julia': 'ar'
-          };
-
-          return userLanguageMap[username.toLowerCase()] || 'es'; // Default to Spanish if not found
-        },
-        simulateTranslation: function (text, sourceLanguage, targetLanguage) {
-          // Skip translation if source and target are the same
-          if (sourceLanguage === targetLanguage) {
-            return text;
-          }
-
-          // Demo translation mappings for different target languages
-          const translations = {
-            'es': { // Spanish
-              'Hello': 'Hola',
-              'How are you?': '¿Cómo estás?',
-              'Good morning': 'Buenos días',
-              'Thank you': 'Gracias',
-              'See you later': 'Hasta luego',
-              "That's interesting!": '¡Eso es interesante!',
-              "I see what you mean.": 'Veo lo que quieres decir.',
-              "Thanks for letting me know.": 'Gracias por hacérmelo saber.',
-              "Sounds good to me!": '¡Me suena bien!',
-              "I'll think about it.": 'Lo pensaré.',
-              "Great idea!": '¡Gran idea!',
-              "Could you tell me more?": '¿Podrías contarme más?',
-              "I agree with you.": 'Estoy de acuerdo contigo.'
             },
-            'fr': { // French
-              'Hello': 'Bonjour',
-              'How are you?': 'Comment allez-vous?',
-              'Good morning': 'Bonjour',
-              'Thank you': 'Merci',
-              'See you later': 'À bientôt',
-              "That's interesting!": "C'est intéressant !",
-              "I see what you mean.": 'Je vois ce que vous voulez dire.',
-              "Thanks for letting me know.": 'Merci de me le faire savoir.',
-              "Sounds good to me!": 'Ça me semble bien !',
-              "I'll think about it.": "J'y réfléchirai.",
-              "Great idea!": 'Excellente idée !',
-              "Could you tell me more?": 'Pourriez-vous me dire plus ?',
-              "I agree with you.": 'Je suis d\'accord avec vous.',
-              "I'm doing great! Thanks for asking. How about you?": 'Je vais très bien ! Merci de demander. Et vous ?'
-            },
-            'de': { // German
-              'Hello': 'Hallo',
-              'How are you?': 'Wie geht es dir?',
-              'Good morning': 'Guten Morgen',
-              'Thank you': 'Danke',
-              'See you later': 'Bis später',
-              "That's interesting!": 'Das ist interessant!',
-              "I see what you mean.": 'Ich verstehe, was du meinst.',
-              "Thanks for letting me know.": 'Danke, dass du es mir mitgeteilt hast.',
-              "Sounds good for me!": 'Klingt gut für mich!',
-              "I'll think about it.": 'Ich werde darüber nachdenken.',
-              "Great idea!": 'Tolle Idee!',
-              "Could you tell me more?": 'Könntest du mir mehr erzählen?',
-              "I agree with you.": 'Ich stimme dir zu.'
-            },
-            'it': { // Italian
-              'Hello': 'Ciao',
-              'How are you?': 'Come stai?',
-              'Good morning': 'Buongiorno',
-              'Thank you': 'Grazie',
-              'See you later': 'Ci vediamo dopo',
-              "That's interesting!": 'È interessante!',
-              "I see what you mean.": 'Capisco cosa intendi.',
-              "Thanks for letting me know.": 'Grazie per avermelo fatto sapere.',
-              "Sounds good to me!": 'Mi sembra buono!',
-              "I'll think about it.": 'Ci penserò.',
-              "Great idea!": 'Ottima idea!',
-              "Could you tell me more?": 'Potresti dirmi di più?',
-              "I agree with you.": 'Sono d\'accordo con te.'
-            },
-            'pt': { // Portuguese
-              'Hello': 'Olá',
-              'How are you?': 'Como você está?',
-              'Good morning': 'Bom dia',
-              'Thank you': 'Obrigado',
-              'See you later': 'Até logo',
-              "That's interesting!": 'Isso é interessante!',
-              "I see what you mean.": 'Eu entendo o que você quer dizer.',
-              "Thanks for letting me know.": 'Obrigado por me avisar.',
-              "Sounds good to me!": 'Parece bom para mim!',
-              "I'll think about it.": 'Vou pensar sobre isso.',
-              "Great idea!": 'Ótima ideia!',
-              "Could you tell me more?": 'Você poderia me contar mais?',
-              "I agree with you.": 'Eu concordo com você.'
-            }
-          };
+            methods: {
+                acceptDisclaimer: function () {
+                    this.showDisclaimer = false;
+                    this.showLanguageSelection = true;
+                },
 
-          // Handle translations TO target language
-          const targetTranslations = translations[targetLanguage];
-          if (targetTranslations && targetTranslations[text]) {
-            return targetTranslations[text];
-          }
+                denyDisclaimer: function () {
+                    this.showDisclaimer = false;
+                    this.showFailure = true;
+                },
+                completeSetup: async function () {
+                    if (this.setupUsername.trim() && this.setupLanguage) {
+                        this.setupUsernameError = '';
+                        this.isCheckingUsername = true;
 
-          // Handle reverse translations (FROM source language TO English)
-          if (targetLanguage === 'en') {
-            // Find the text in the source language and return the English equivalent
-            const sourceTranslations = translations[sourceLanguage];
-            if (sourceTranslations) {
-              for (const [englishText, foreignText] of Object.entries(sourceTranslations)) {
-                if (foreignText === text) {
-                  return englishText;
+                        try {
+                            // First check if user profile already exists by checking if they have a self-chat
+                            const existingProfileResponse = await fetch(`${window.location.origin}/api/checkprofile/${this.setupUsername.trim()}`);
+
+                            if (existingProfileResponse.ok) {
+                                const existingProfile = await existingProfileResponse.json();
+                                // Check if user profile exists
+                                if (existingProfile && existingProfile.UserExists) {
+                                    this.setupUsernameError = 'This username is already taken. Please choose a different one.';
+                                    this.isCheckingUsername = false;
+                                    return;
+                                }
+                            }
+
+                            // Username is available, set up user but don't create backend profile yet
+                            this.username = this.setupUsername.trim();
+                            this.userLanguage = this.setupLanguage;
+                            this.showLanguageSelection = false;
+                            this.appReady = true;
+                            this.currentView = 'chats-list';
+
+                            // In demo mode, skip SignalR connection
+                            if (!this.isDemoMode) {
+                                // Initialize SignalR connection - profile will be created only after connection is established
+                                this.initializeConnection();
+                            } else {
+                                this.ready = true; // Set ready immediately for demo mode
+                            }
+
+                        } catch (error) {
+                            console.error('Error during setup:', error);
+                            this.setupUsernameError = 'Unable to complete setup. Please try again.';
+                        } finally {
+                            this.isCheckingUsername = false;
+                        }
+                    }
+                },
+
+                initializeConnection: function () {
+                    const apiBaseUrl = window.location.origin;
+
+                    const connection = new signalR.HubConnectionBuilder()
+                        .withUrl(apiBaseUrl + '/api', {
+                            // Try with explicit transport and logging
+                            //transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling,
+                            //skipNegotiation: false,
+                            // Add detailed logging
+                            logger: signalR.LogLevel.Debug
+                        })
+                        .withAutomaticReconnect()
+                        .configureLogging(signalR.LogLevel.Debug)
+                        .build();
+
+                    // Add event handlers for connection lifecycle
+                    connection.onreconnecting((error) => {
+                        console.log('SignalR: Connection lost due to error. Reconnecting...', error);
+                    });
+
+                    connection.onreconnected((connectionId) => {
+                        console.log('SignalR: Connection reestablished. Connected with connectionId:', connectionId);
+                    });
+
+                    connection.onclose((error) => {
+                        console.log('SignalR: Connection closed.', error);
+                    });
+
+                    connection.on('newMessage', this.onNewMessage);
+                    connection.on('newConnection', this.onNewConnection);
+
+                    // Add debugging for all SignalR events
+                    console.log('SignalR: Registering event handlers');
+                    console.log('SignalR: newMessage handler registered:', typeof this.onNewMessage);
+                    console.log('SignalR: newConnection handler registered:', typeof this.onNewConnection);
+
+                    console.log('SignalR: Starting connection...');
+                    connection.start()
+                        .then(() => {
+                            console.log('SignalR: Connected successfully!');
+                            
+                            // Test if event handlers are working
+                            console.log('SignalR: Testing event handlers...');
+                            console.log('SignalR: Connection object:', connection);
+                            console.log('SignalR: Registered handlers:', connection._callbacks);
+
+                            // Capture connection ID if not already set by onNewConnection
+                            if (!this.myConnectionId && connection.connectionId) {
+                                this.myConnectionId = connection.connectionId;
+                                console.log('Connection ID captured from connection object:', this.myConnectionId);
+                            }
+
+                            // Create user profile with connection ID (only now that connection is established)
+                            if (this.username && this.myConnectionId && !this.isDemoMode) {
+                                this.registerUserWithBackend();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('SignalR: Connection failed:', error);
+                            // Try to get more detailed error information
+                            if (error.transport) {
+                                console.error('SignalR: Failed transport:', error.transport);
+                            }
+                            if (error.statusCode) {
+                                console.error('SignalR: Status code:', error.statusCode);
+                            }
+
+                            // Since SignalR connection failed, user can't send messages
+                            // Show error and go back to setup
+                            this.setupUsernameError = 'Unable to establish connection. Please try again.';
+                            this.showLanguageSelection = true;
+                            this.appReady = false;
+                            this.ready = false;
+                        });
+
+                    this.connection = connection;
+                },
+                generateAccessToken: function (username) {
+                    // Generate a simple token for demo purposes
+                    return btoa(JSON.stringify({
+                        username: username,
+                        language: this.userLanguage,
+                        timestamp: Date.now()
+                    }));
+                }, checkUsernameAvailability: async function (username) {
+                    // In demo mode, simulate availability check
+                    if (this.isDemoMode) {
+                        // Simulate some taken usernames for demo
+                        const takenUsernames = ['admin', 'test', 'demo', 'user', 'guest'];
+                        return !takenUsernames.includes(username.toLowerCase());
+                    }
+
+                    try {
+                        // Check if user profile exists using the dedicated endpoint
+                        const response = await fetch(`${window.location.origin}/api/checkprofile/${username}`);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            // User is available if they don't exist
+                            return !data.UserExists;
+                        } else {
+                            // Other error, assume unavailable for safety
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error('Error checking username availability:', error);
+                        throw error;
+                    }
+                },
+
+                registerUserWithBackend: async function () {
+                    // Create user profile with SignalR connection ID (first time creation)
+                    try {
+                        const userProfile = {
+                            GroupName: this.username, // Use username as group name for self-chat
+                            UserId: this.username,
+                            Language: this.userLanguage,
+                            ConnectionId: this.myConnectionId
+                        };
+
+                        const createProfileResponse = await fetch(`${window.location.origin}/api/createprofile`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(userProfile)
+                        });
+
+                        if (createProfileResponse.ok) {
+                            console.log(`User ${this.username} profile created with connection ID: ${this.myConnectionId}`);
+                            // Profile created successfully, user is now fully registered
+                            this.ready = true;
+                        } else if (createProfileResponse.status === 409) {
+                            // User already exists (shouldn't happen in this flow, but handle gracefully)
+                            console.log(`User ${this.username} already exists, connection ID updated: ${this.myConnectionId}`);
+                            this.ready = true;
+                        } else {
+                            console.error('Failed to create user profile with connection ID');
+                            // Show error to user since they can't use the app without a profile
+                            this.setupUsernameError = 'Unable to create user profile. Please try again.';
+                            this.showLanguageSelection = true;
+                            this.appReady = false;
+                        }
+                    } catch (error) {
+                        console.error('Error during user profile creation:', error);
+                        // Show error to user since they can't use the app without a profile
+                        this.setupUsernameError = 'Unable to create user profile. Please try again.';
+                        this.showLanguageSelection = true;
+                        this.appReady = false;
+                    }
+                },
+
+                registerUsersToChat: async function (groupName, users) {
+                    try {
+                        // Register each user to the chat group with their specific language
+                        for (const user of users) {
+                            const userId = typeof user === 'string' ? user : user.userId;
+                            const userLanguage = typeof user === 'string' ?
+                                (userId === this.username ? this.userLanguage : 'en') :
+                                user.language;
+                            const userConnectionId = typeof user === 'string' ?
+                                (userId === this.username ? this.myConnectionId : null) :
+                                user.connectionId;
+
+                            const chatMember = {
+                                GroupName: groupName,
+                                UserId: userId,
+                                Language: userLanguage,
+                                ConnectionId: userConnectionId
+                            };
+
+                            console.log(`Registering user ${userId} to chat group ${groupName} with connection ID: ${userConnectionId}`);
+
+                            const response = await fetch(`${window.location.origin}/api/AddChatMember`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(chatMember)
+                            });
+
+                            if (response.ok) {
+                                console.log(`User ${userId} registered to chat group ${groupName} with language ${userLanguage} and connection ID ${userConnectionId}`);
+                            } else if (response.status === 409) {
+                                console.log(`User ${userId} already exists in chat group ${groupName}`);
+                            } else {
+                                console.error(`Failed to register user ${userId} to chat group ${groupName}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error registering users to chat group:', error);
+                    }
+                }, checkUserOnlineStatus: async function (username) {
+                    try {
+                        // Check if user profile exists using the dedicated endpoint
+                        const response = await fetch(`${window.location.origin}/api/checkprofile/${username}`);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            // User is online if they exist as a profile (have a self-chat)
+                            return data.UserExists;
+                        } else {
+                            console.error(`Failed to check online status for user ${username}:`, response.status);
+                            return false; // Assume offline on error
+                        }
+                    } catch (error) {
+                        console.error('Error checking user online status:', error);
+                        return false; // Assume offline on error
+                    }
+                },
+
+                // Chat management methods
+                openChat: function (chatId) {
+                    this.currentChatId = chatId;
+                    this.currentView = 'chat';
+                    if (this.chats[chatId]) {
+                        this.chats[chatId].unread = 0; // Mark as read
+                    }
+                    this.$nextTick(() => {
+                        this.scrollToBottom();
+                    });
+                },
+
+                goToChatsListing: function () {
+                    this.currentView = 'chats-list';
+                    this.currentChatId = null;
+                },
+                createNewChat: async function () {
+                    const otherUser = this.newChatUsername.trim();
+                    if (otherUser && otherUser !== this.username) {
+                        this.newChatError = '';
+                        this.isCheckingUserOnline = true;
+
+                        try {
+                            // First, fetch the target user's profile to get their language
+                            const targetUserProfile = await this.fetchUserProfile(otherUser);
+                            console.log('Target user profile:', targetUserProfile);
+
+                            if (!targetUserProfile) {
+                                this.newChatError = `User '${otherUser}' is not online. You can only start chats with online users.`;
+                                this.isCheckingUserOnline = false;
+                                return;
+                            }
+
+                            // User is online, proceed to create chat with proper language setup
+                            const chatId = this.generateChatId(this.username, otherUser);
+
+                            if (!this.chats[chatId]) {
+                                this.chats[chatId] = {
+                                    participants: [this.username, otherUser],
+                                    participantLanguages: {
+                                        [this.username]: this.userLanguage,
+                                        [otherUser]: targetUserProfile.language
+                                    },
+                                    messages: [],
+                                    unread: 0,
+                                    lastActivity: new Date()
+                                };
+
+                                // Register both users to this chat group in the backend with correct languages
+                                if (!this.isDemoMode) {
+                                    await this.registerUsersToChat(chatId, [
+                                        { userId: this.username, language: this.userLanguage, connectionId: this.myConnectionId },
+                                        { userId: otherUser, language: targetUserProfile.language, connectionId: targetUserProfile.connectionId }
+                                    ]);
+                                }
+                            }
+
+                            this.showNewChatModal = false;
+                            this.newChatUsername = '';
+                            this.newChatError = '';
+                            this.openChat(chatId);
+
+                        } catch (error) {
+                            console.error('Error checking user online status:', error);
+                            this.newChatError = 'Unable to verify user status. Please try again.';
+                        } finally {
+                            this.isCheckingUserOnline = false;
+                        }
+                    }
+                },
+
+                generateChatId: function (user1, user2) {
+                    // Generate consistent chat ID regardless of user order
+                    return [user1, user2].sort().join('_');
+                },
+
+                getChatDisplayName: function (chat) {
+                    // Return the other participant's name
+                    return chat.participants.find(p => p !== this.username) || 'Unknown';
+                },
+
+                getCurrentChatDisplayName: function () {
+                    if (this.currentChatId && this.chats[this.currentChatId]) {
+                        return this.getChatDisplayName(this.chats[this.currentChatId]);
+                    }
+                    return 'Chat';
+                },
+
+                getCurrentChatMessages: function () {
+                    if (this.currentChatId && this.chats[this.currentChatId]) {
+                        return this.chats[this.currentChatId].messages;
+                    }
+                    return [];
+                },
+
+                getLastMessagePreview: function (chat) {
+                    if (chat.messages.length === 0) {
+                        return 'No messages yet';
+                    }
+                    const lastMessage = chat.messages[chat.messages.length - 1];
+                    const text = lastMessage.Text || lastMessage.text || '';
+                    return text.length > 50 ? text.substring(0, 50) + '...' : text;
+                },
+
+                getUnreadCount: function (chat) {
+                    return chat.unread || 0;
+                },
+
+                formatTime: function (timestamp) {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp);
+                    const now = new Date();
+                    const diff = now - date;
+
+                    if (diff < 60000) return 'Just now'; // Less than 1 minute
+                    if (diff < 3600000) return Math.floor(diff / 60000) + 'm'; // Less than 1 hour
+                    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h'; // Less than 1 day
+                    return date.toLocaleDateString();
+                }, sendNewMessage: function () {
+                    if (this.newMessage.trim() && this.currentChatId) {
+                        const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
+                        if (this.isDemoMode) {                // Demo mode - local simulation
+                            const message = {
+                                id: this.messageCounter++,
+                                Sender: this.username,
+                                Text: this.newMessage,
+                                OriginalText: this.newMessage,
+                                TranslatedText: null, // Pre-define for Vue reactivity
+                                SourceLanguage: null, // Pre-define for Vue reactivity
+                                TargetLanguage: null, // Pre-define for Vue reactivity
+                                timestamp: new Date(),
+                                isTranslated: false,
+                                status: 'sending' // Initial status
+                            };
+
+                            this.chats[this.currentChatId].messages.push(message);
+                            this.chats[this.currentChatId].lastActivity = new Date();
+                            // Simulate translation response in demo mode
+                            setTimeout(() => {
+                                // Get the target user's language (for demo, simulate different users having different languages)
+                                const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
+                                const targetLanguage = this.getTargetUserLanguage(otherUser);
+
+                                // Simulate translation result based on target language
+                                const translatedText = this.simulateTranslation(this.newMessage, this.userLanguage, targetLanguage);
+
+                                // Update the message with translation
+                                this.$set(message, 'TranslatedText', translatedText);
+                                this.$set(message, 'SourceLanguage', this.userLanguage);
+                                this.$set(message, 'TargetLanguage', targetLanguage);
+                                this.$set(message, 'isTranslated', true);
+                                this.$set(message, 'status', 'delivered');
+
+                                this.$forceUpdate();
+                            }, 500);
+
+                            this.newMessage = '';
+
+                            this.$nextTick(() => {
+                                this.scrollToBottom();
+                            });
+
+                            // Simulate a response in demo mode after a short delay
+                            setTimeout(() => {
+                                this.simulateResponse();
+                            }, 1000 + Math.random() * 2000);
+                        } else {
+                            // Live mode - send via backend HTTP API for translation
+                            // Add to local chat immediately for better UX
+                            const message = {
+                                id: this.messageCounter++,
+                                Sender: this.username,
+                                Text: this.newMessage,
+                                OriginalText: this.newMessage, // Store original text
+                                TranslatedText: null, // Pre-define for Vue reactivity
+                                SourceLanguage: null, // Pre-define for Vue reactivity
+                                TargetLanguage: null, // Pre-define for Vue reactivity
+                                timestamp: new Date(),
+                                isPrivate: true,
+                                isTranslated: false, // Will be updated when response comes back
+                                status: 'sending' // Initial status
+                            };
+
+                            console.log('Creating message:', message);
+                            this.chats[this.currentChatId].messages.push(message);
+                            this.chats[this.currentChatId].lastActivity = new Date();
+                            
+                            // Send message to backend for translation, passing message ID for tracking
+                            this.sendMessageViaBackend(otherUser, this.newMessage, message.id);
+                            
+                            this.newMessage = '';
+
+                            this.$nextTick(() => {
+                                this.scrollToBottom();
+                            });
+                        }
+                    }
+                },
+
+                sendMessageViaBackend: async function (targetUserId, messageText, messageId) {
+                    try {
+                        const userMessage = {
+                            GroupName: this.currentChatId, // Use the chat ID as the group name
+                            SourceUserId: this.username,
+                            TargetUserId: targetUserId,
+                            Message: messageText,
+                            TimeStamp: new Date().toISOString()
+                        };
+
+                        console.log('Sending message to backend:', userMessage);
+
+                        const response = await fetch(`${window.location.origin}/api/SendMessageToUser`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(userMessage)
+                        });
+
+                        if (response.ok) {
+                            // Parse the response to get translation details
+                            const translationResult = await response.json();
+                            console.log('Message sent and translated (HTTP response):', translationResult);
+
+                            // Parse the translated text if it's JSON
+                            let parsedTranslatedText = translationResult.translatedText || translationResult.TranslatedText;
+                            console.log('Raw translated text from HTTP response:', parsedTranslatedText);
+                            
+                            if (typeof parsedTranslatedText === 'string' && parsedTranslatedText.startsWith('[{')) {
+                                try {
+                                    const parsedJson = JSON.parse(parsedTranslatedText);
+                                    if (parsedJson[0] && parsedJson[0].translations) {
+                                        // Get the target user's language from chat participant languages
+                                        const targetLanguage = this.chats[this.currentChatId]?.participantLanguages?.[targetUserId] || 'en';
+                                        const translation = parsedJson[0].translations.find(t => t.to === targetLanguage);
+                                        if (translation) {
+                                            parsedTranslatedText = translation.text;
+                                        }
+                                    }
+                                } catch (parseError) {
+                                    console.error('Error parsing translated text:', parseError);
+                                }
+                            }
+
+                            console.log('Final parsed translated text from HTTP response:', parsedTranslatedText);
+
+                            // Update the specific message with translation details
+                            if (this.currentChatId && this.chats[this.currentChatId]) {
+                                // Find the specific message by ID
+                                const messageToUpdate = this.chats[this.currentChatId].messages.find(msg => msg.id === messageId);
+                                console.log('Message to update from HTTP response:', messageToUpdate);
+                                
+                                if (messageToUpdate && messageToUpdate.Sender === this.username && !messageToUpdate.isTranslated) {
+                                    // Update the specific message with translation details
+                                    messageToUpdate.OriginalText = translationResult.originalText || translationResult.OriginalText || messageText;
+                                    messageToUpdate.TranslatedText = parsedTranslatedText;
+                                    messageToUpdate.Text = parsedTranslatedText; // Update the display text
+                                    messageToUpdate.SourceLanguage = translationResult.sourceLanguage || translationResult.SourceLanguage || this.userLanguage;
+                                    messageToUpdate.TargetLanguage = translationResult.targetLanguage || translationResult.TargetLanguage ||
+                                        this.chats[this.currentChatId]?.participantLanguages?.[targetUserId] || 'en';
+                                    messageToUpdate.isTranslated = true;
+                                    messageToUpdate.status = 'delivered';
+
+                                    console.log('Message after HTTP response update:', messageToUpdate);
+
+                                    // Force Vue to re-render the message
+                                    this.$forceUpdate();
+                                } else {
+                                    console.log('Could not find message to update or message already translated (HTTP response)');
+                                }
+                            }
+                        } else {
+                            console.error('Failed to send message via backend');
+                            // Mark specific message as failed
+                            if (this.currentChatId && this.chats[this.currentChatId] && messageId) {
+                                const messageToUpdate = this.chats[this.currentChatId].messages.find(msg => msg.id === messageId);
+                                if (messageToUpdate && messageToUpdate.Sender === this.username) {
+                                    messageToUpdate.status = 'failed';
+                                    this.$forceUpdate();
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error sending message via backend:', error);
+                        // Mark specific message as failed on network error
+                        if (this.currentChatId && this.chats[this.currentChatId] && messageId) {
+                            const messageToUpdate = this.chats[this.currentChatId].messages.find(msg => msg.id === messageId);
+                            if (messageToUpdate && messageToUpdate.Sender === this.username) {
+                                messageToUpdate.status = 'failed';
+                                this.$forceUpdate();
+                            }
+                        }
+                    }
+                },
+
+                simulateResponse: function () {
+                    if (this.currentChatId && this.chats[this.currentChatId]) {
+                        const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
+                        const responses = [
+                            "That's interesting!",
+                            "I see what you mean.",
+                            "Thanks for letting me know.",
+                            "Sounds good to me!",
+                            "I'll think about it.",
+                            "Great idea!",
+                            "Could you tell me more?",
+                            "I agree with you."
+                        ];
+                        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+                        // Get the other user's language and simulate translation
+                        const otherUserLanguage = this.getTargetUserLanguage(otherUser);
+                        const translatedToMyLanguage = this.simulateTranslation(randomResponse, otherUserLanguage, this.userLanguage);
+
+                        const responseMessage = {
+                            id: this.messageCounter++,
+                            Sender: otherUser,
+                            Text: translatedToMyLanguage, // What we see (translated)
+                            OriginalText: randomResponse, // What they actually typed
+                            TranslatedText: translatedToMyLanguage, // What we see (translated)
+                            SourceLanguage: otherUserLanguage, // Their language
+                            TargetLanguage: this.userLanguage, // Our language
+                            timestamp: new Date(),
+                            isTranslated: true
+                        };
+
+                        this.chats[this.currentChatId].messages.push(responseMessage);
+                        this.chats[this.currentChatId].lastActivity = new Date();
+
+                        // If not viewing this chat, increment unread count
+                        if (this.currentView !== 'chat' || this.currentChatId !== this.currentChatId) {
+                            this.chats[this.currentChatId].unread = (this.chats[this.currentChatId].unread || 0) + 1;
+                        }
+
+                        this.$nextTick(() => {
+                            this.scrollToBottom();
+                        });
+                    }
+                },                onNewMessage: function (messageData) {
+                    // Handle incoming translated messages from SignalR
+                    console.log('Received SignalR message:', messageData);
+
+                    // Parse the translated text if it's JSON
+                    let parsedTranslatedText = messageData.TranslatedText || messageData.translatedText;
+                    console.log('Raw translated text:', parsedTranslatedText);
+                    
+                    if (typeof parsedTranslatedText === 'string' && parsedTranslatedText.startsWith('[{')) {
+                        try {
+                            const parsedJson = JSON.parse(parsedTranslatedText);
+                            console.log('Parsed JSON:', parsedJson);
+                            if (parsedJson[0] && parsedJson[0].translations) {
+                                // Find the translation that matches our language
+                                const translation = parsedJson[0].translations.find(t => t.to === this.userLanguage);
+                                console.log('Found translation for', this.userLanguage, ':', translation);
+                                if (translation) {
+                                    parsedTranslatedText = translation.text;
+                                }
+                            }
+                        } catch (parseError) {
+                            console.error('Error parsing translated text in SignalR message:', parseError);
+                        }
+                    }
+                    
+                    console.log('Final parsed translated text:', parsedTranslatedText);
+
+                    const message = {
+                        id: this.messageCounter++,
+                        Sender: messageData.SourceUserId || messageData.sourceUserId || messageData.sender || messageData.Sender,
+                        Text: parsedTranslatedText || messageData.Message, // Use parsed translated text for display
+                        OriginalText: messageData.OriginalText || messageData.originalText || messageData.Message,
+                        TranslatedText: parsedTranslatedText,
+                        SourceLanguage: messageData.SourceLanguage || messageData.sourceLanguage,
+                        TargetLanguage: messageData.TargetLanguage || messageData.targetLanguage,
+                        timestamp: new Date(),
+                        isTranslated: true
+                    };
+
+                    console.log('Processed message:', message);
+
+                    // Determine which chat this message belongs to
+                    const sender = message.Sender;
+                    let chatId;
+
+                    if (sender === this.username) {
+                        // This is our own message coming back from SignalR
+                        // Since we're now processing our own messages via HTTP response, we can ignore SignalR messages from ourselves
+                        console.log('Ignoring SignalR message from self - using HTTP response for translation updates');
+                        return;
+                    } else {
+                        // This is a message from another user
+                        chatId = this.generateChatId(this.username, sender);
+                        console.log('Message is from other user:', sender, 'chatId:', chatId);
+
+                        // Create chat if it doesn't exist
+                        if (!this.chats[chatId]) {
+                            console.log('Creating new chat for:', chatId);
+                            this.$set(this.chats, chatId, {
+                                participants: [this.username, sender],
+                                participantLanguages: {
+                                    [this.username]: this.userLanguage,
+                                    [sender]: message.SourceLanguage || 'en'
+                                },
+                                messages: [],
+                                unread: 0,
+                                lastActivity: new Date()
+                            });
+                        } else if (!this.chats[chatId].participantLanguages) {
+                            // Update existing chat with participant languages
+                            console.log('Updating participant languages for:', chatId);
+                            this.$set(this.chats[chatId], 'participantLanguages', {
+                                [this.username]: this.userLanguage,
+                                [sender]: message.SourceLanguage || 'en'
+                            });
+                        }
+                    }
+
+                    if (chatId && this.chats[chatId]) {
+                        console.log('Adding message to chat:', chatId);
+                        this.chats[chatId].messages.push(message);
+                        this.$set(this.chats[chatId], 'lastActivity', new Date());
+
+                        // If not viewing this chat, increment unread count
+                        if (this.currentView !== 'chat' || this.currentChatId !== chatId) {
+                            console.log('Incrementing unread count for chat:', chatId);
+                            this.$set(this.chats[chatId], 'unread', (this.chats[chatId].unread || 0) + 1);
+                        }
+
+                        // Force Vue to update
+                        this.$forceUpdate();
+
+                        this.$nextTick(() => {
+                            if (this.currentChatId === chatId) {
+                                this.scrollToBottom();
+                            }
+                        });
+                    } else {
+                        console.error('Could not find or create chat for message:', chatId, messageData);
+                    }
+                },
+
+                onNewConnection: function (connectionInfo) {
+                    console.log('New connection:', connectionInfo);
+                    this.myConnectionId = connectionInfo.ConnectionId || connectionInfo.connectionId || connectionInfo;
+                    console.log('Connected with ID:', this.myConnectionId);
+
+                    // Create user profile with the connection ID now that we have it
+                    if (this.username && this.myConnectionId && !this.isDemoMode) {
+                        this.registerUserWithBackend();
+                    }
+                },
+
+                generateAccessToken: function (userName) {
+                    const header = {
+                        "alg": "HS256",
+                        "typ": "JWT"
+                    };
+
+                    const stringifiedHeader = CryptoJS.enc.Utf8.parse(JSON.stringify(header));
+                    const encodedHeader = this.base64url(stringifiedHeader);
+
+                    // customize your JWT token payload here
+                    const tokenData = {
+                        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier": userName,
+                        "exp": 1699819025,
+                        'admin': false,
+                        'language': this.userLanguage
+                    };
+
+                    const stringifiedData = CryptoJS.enc.Utf8.parse(JSON.stringify(tokenData));
+                    const encodedData = this.base64url(stringifiedData);
+
+                    const token = encodedHeader + "." + encodedData;
+                    const secret = "myfunctionauthtest"; // do not expose your secret here
+
+                    const signature = CryptoJS.HmacSHA256(token, secret);
+                    const encodedSignature = this.base64url(signature);
+
+                    return token + "." + encodedSignature;
+                },
+
+                base64url: function (source) {
+                    // Encode in classical base64
+                    let encodedSource = CryptoJS.enc.Base64.stringify(source);
+
+                    // Remove padding equal characters
+                    encodedSource = encodedSource.replace(/=+$/, '')
+
+                    // Replace characters according to base64url specifications
+                    encodedSource = encodedSource.replace(/\+/g, '-');
+                    encodedSource = encodedSource.replace(/\//g, '_');
+
+                    return encodedSource;
+                },
+                isMyMessage: function (message) {
+                    return (message.Sender || message.sender) === this.username;
+                }, getLanguageCode: function (languageCode) {
+                    // Simply return the language code in uppercase - no need for hardcoded mappings
+                    // The language code comes from the SignalR message and is already correct
+                    return languageCode ? languageCode.toUpperCase() : '';
+                },
+
+                getStatusText: function (status) {
+                    switch (status) {
+                        case 'sending': return 'Sending...';
+                        case 'delivered': return 'Delivered';
+                        case 'failed': return 'Failed to send';
+                        default: return 'Sending...';
+                    }
+                },
+                scrollToBottom: function () {
+                    const messagesContainer = document.querySelector('.messages-container') ||
+                        document.querySelector('[style*="overflow-y: auto"]');
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                }, getChatLanguages: function (chat) {
+                    // Get languages from stored participant languages or fallback to message analysis
+                    const languages = new Set();
+
+                    // First, try to get languages from stored participant languages
+                    if (chat.participantLanguages) {
+                        Object.values(chat.participantLanguages).forEach(lang => {
+                            if (lang) languages.add(lang);
+                        });
+                    }
+
+                    // If no stored languages, analyze messages for unique source languages
+                    if (languages.size === 0) {
+                        // Add user's language
+                        languages.add(this.userLanguage);
+
+                        // Add source languages from translated messages
+                        chat.messages.forEach(message => {
+                            if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
+                                languages.add(message.SourceLanguage);
+                            }
+                        });
+                    }
+
+                    // Convert language codes to display names
+                    const languageNames = Array.from(languages).map(code => {
+                        const lang = this.supportedLanguages.find(l => l.code === code);
+                        return lang ? lang.name.split(' ')[0] : code.toUpperCase(); // Use first word of language name
+                    });
+
+                    return languageNames.join(' ↔ ');
+                },
+                getChatLanguagesDisplay: function (chat) {
+                    // Enhanced language display using stored participant languages
+                    const languages = new Set();
+
+                    // First, try to get languages from stored participant languages
+                    if (chat.participantLanguages) {
+                        Object.values(chat.participantLanguages).forEach(lang => {
+                            if (lang) languages.add(lang);
+                        });
+                    }
+
+                    // If no stored languages, analyze messages for unique source languages
+                    if (languages.size === 0) {
+                        // Add user's language
+                        languages.add(this.userLanguage);
+
+                        // Add source languages from translated messages
+                        chat.messages.forEach(message => {
+                            if (message.SourceLanguage && message.SourceLanguage !== this.userLanguage) {
+                                languages.add(message.SourceLanguage);
+                            }
+                        });
+                    }
+
+                    // If only one language, show just that
+                    if (languages.size === 1) {
+                        return this.getLanguageCode(Array.from(languages)[0]);
+                    }
+
+                    // Convert language codes to short names
+                    const languageNames = Array.from(languages).map(code => {
+                        return this.getLanguageCode(code);
+                    });
+
+                    return languageNames.join(' ⟷ ');
+                },
+                getCurrentChatLanguages: function () {
+                    if (this.currentChatId && this.chats[this.currentChatId]) {
+                        return this.getChatLanguages(this.chats[this.currentChatId]);
+                    }
+                    return '';
+                },
+
+                getCurrentChatLanguagesDisplay: function () {
+                    if (this.currentChatId && this.chats[this.currentChatId]) {
+                        return this.getChatLanguagesDisplay(this.chats[this.currentChatId]);
+                    }
+                    return '';
+                },
+                getTargetUserLanguage: function (username) {
+                    // In demo mode, simulate different users having different languages
+                    // This could be extended to store actual user language preferences
+                    const userLanguageMap = {
+                        'alice': 'fr',  // French
+                        'bob': 'es',    // Spanish
+                        'charlie': 'de', // German
+                        'diana': 'it',
+                        'erik': 'pt',
+                        'fiona': 'ru',
+                        'george': 'ja',
+                        'hannah': 'ko',
+                        'ivan': 'zh',
+                        'julia': 'ar'
+                    };
+
+                    return userLanguageMap[username.toLowerCase()] || 'es'; // Default to Spanish if not found
+                },
+                simulateTranslation: function (text, sourceLanguage, targetLanguage) {
+                    // Skip translation if source and target are the same
+                    if (sourceLanguage === targetLanguage) {
+                        return text;
+                    }
+
+                    // Demo translation mappings for different target languages
+                    const translations = {
+                        'es': { // Spanish
+                            'Hello': 'Hola',
+                            'How are you?': '¿Cómo estás?',
+                            'Good morning': 'Buenos días',
+                            'Thank you': 'Gracias',
+                            'See you later': 'Hasta luego',
+                            "That's interesting!": '¡Eso es interesante!',
+                            "I see what you mean.": 'Veo lo que quieres decir.',
+                            "Thanks for letting me know.": 'Gracias por hacérmelo saber.',
+                            "Sounds good to me!": '¡Me suena bien!',
+                            "I'll think about it.": 'Lo pensaré.',
+                            "Great idea!": '¡Gran idea!',
+                            "Could you tell me more?": '¿Podrías contarme más?',
+                            "I agree with you.": 'Estoy de acuerdo contigo.'
+                        },
+                        'fr': { // French
+                            'Hello': 'Bonjour',
+                            'How are you?': 'Comment allez-vous?',
+                            'Good morning': 'Bonjour',
+                            'Thank you': 'Merci',
+                            'See you later': 'À bientôt',
+                            "That's interesting!": "C'est intéressant !",
+                            "I see what you mean.": 'Je vois ce que vous voulez dire.',
+                            "Thanks for letting me know.": 'Merci de me le faire savoir.',
+                            "Sounds good to me!": 'Ça me semble bien !',
+                            "I'll think about it.": "J'y réfléchirai.",
+                            "Great idea!": 'Excellente idée !',
+                            "Could you tell me more?": 'Pourriez-vous me dire plus ?',
+                            "I agree with you.": 'Je suis d\'accord avec vous.',
+                            "I'm doing great! Thanks for asking. How about you?": 'Je vais très bien ! Merci de demander. Et vous ?'
+                        },
+                        'de': { // German
+                            'Hello': 'Hallo',
+                            'How are you?': 'Wie geht es dir?',
+                            'Good morning': 'Guten Morgen',
+                            'Thank you': 'Danke',
+                            'See you later': 'Bis später',
+                            "That's interesting!": 'Das ist interessant!',
+                            "I see what you mean.": 'Ich verstehe, was du meinst.',
+                            "Thanks for letting me know.": 'Danke, dass du es mir mitgeteilt hast.',
+                            "Sounds good for me!": 'Klingt gut für mich!',
+                            "I'll think about it.": 'Ich werde darüber nachdenken.',
+                            "Great idea!": 'Tolle Idee!',
+                            "Could you tell me more?": 'Könntest du mir mehr erzählen?',
+                            "I agree with you.": 'Ich stimme dir zu.'
+                        },
+                        'it': { // Italian
+                            'Hello': 'Ciao',
+                            'How are you?': 'Come stai?',
+                            'Good morning': 'Buongiorno',
+                            'Thank you': 'Grazie',
+                            'See you later': 'Ci vediamo dopo',
+                            "That's interesting!": 'È interessante!',
+                            "I see what you mean.": 'Capisco cosa intendi.',
+                            "Thanks for letting me know.": 'Grazie per avermelo fatto sapere.',
+                            "Sounds good to me!": 'Mi sembra buono!',
+                            "I'll think about it.": 'Ci penserò.',
+                            "Great idea!": 'Ottima idea!',
+                            "Could you tell me more?": 'Potresti dirmi di più?',
+                            "I agree with you.": 'Sono d\'accordo con te.'
+                        },
+                        'pt': { // Portuguese
+                            'Hello': 'Olá',
+                            'How are you?': 'Como você está?',
+                            'Good morning': 'Bom dia',
+                            'Thank you': 'Obrigado',
+                            'See you later': 'Até logo',
+                            "That's interesting!": 'Isso é interessante!',
+                            "I see what you mean.": 'Eu entendo o que você quer dizer.',
+                            "Thanks for letting me know.": 'Obrigado por me avisar.',
+                            "Sounds good to me!": 'Parece bom para mim!',
+                            "I'll think about it.": 'Vou pensar sobre isso.',
+                            "Great idea!": 'Ótima ideia!',
+                            "Could you tell me more?": 'Você poderia me contar mais?',
+                            "I agree with you.": 'Eu concordo com você.'
+                        }
+                    };
+
+                    // Handle translations TO target language
+                    const targetTranslations = translations[targetLanguage];
+                    if (targetTranslations && targetTranslations[text]) {
+                        return targetTranslations[text];
+                    }
+
+                    // Handle reverse translations (FROM source language TO English)
+                    if (targetLanguage === 'en') {
+                        // Find the text in the source language and return the English equivalent
+                        const sourceTranslations = translations[sourceLanguage];
+                        if (sourceTranslations) {
+                            for (const [englishText, foreignText] of Object.entries(sourceTranslations)) {
+                                if (foreignText === text) {
+                                    return englishText;
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback: show translated indicator with target language
+                    const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
+                    const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
+                    return `[${langDisplayName}: ${text}]`;
+                }, deleteUser: function () {
+                    // Clean up user state when app is closed
+                    if (this.username && !this.isDemoMode) {
+                        try {
+                            // Use fetch with keepalive for cleanup
+                            fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
+                                method: 'DELETE',
+                                keepalive: true,
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            }).catch(error => {
+                                console.error('Error cleaning up user:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error during user cleanup:', error);
+                        }
+                    }
+                }, loadSupportedLanguages: async function () {
+                    try {
+                        this.isLoadingLanguages = true;
+                        const response = await fetch(`${window.location.origin}/api/supportedlanguages`);
+
+                        if (response.ok) {
+                            const data = await response.json();
+
+                            // Parse Azure Translator API response format
+                            if (data.translation) {
+                                const languages = [];
+                                for (const [code, details] of Object.entries(data.translation)) {
+                                    languages.push({
+                                        code: code,
+                                        name: details.name,
+                                        nativeName: details.nativeName || details.name
+                                    });
+                                }
+
+                                // Sort languages alphabetically by name
+                                languages.sort((a, b) => a.name.localeCompare(b.name));
+                                this.supportedLanguages = languages;
+                            }
+                        } else {
+                            console.error('Failed to load supported languages:', response.status);
+                            // Fall back to a minimal set of languages
+                            this.supportedLanguages = [
+                                { code: 'en', name: 'English', nativeName: 'English' },
+                                { code: 'es', name: 'Spanish', nativeName: 'Español' },
+                                { code: 'fr', name: 'French', nativeName: 'Français' },
+                                { code: 'de', name: 'German', nativeName: 'Deutsch' },
+                                { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+                                { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+                                { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
+                                { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+                                { code: 'ko', name: 'Korean', nativeName: '한국어' },
+                                { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
+                            ];
+                        }
+                    } catch (error) {
+                        console.error('Error loading supported languages:', error);
+                        // Fall back to a minimal set of languages
+                        this.supportedLanguages = [
+                            { code: 'en', name: 'English', nativeName: 'English' },
+                            { code: 'es', name: 'Spanish', nativeName: 'Español' },
+                            { code: 'fr', name: 'French', nativeName: 'Français' },
+                            { code: 'de', name: 'German', nativeName: 'Deutsch' },
+                            { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+                            { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+                            { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
+                            { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+                            { code: 'ko', name: 'Korean', nativeName: '한국어' },
+                            { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
+                        ];
+                    } finally {
+                        this.isLoadingLanguages = false;
+                    }
+                },
+                handleSessionTimeout: function () {
+                    console.log('Session timeout - cleaning up user and showing timeout screen');
+
+                    // Clean up user state
+                    if (this.username && !this.isDemoMode) {
+                        this.deleteUser();
+                    }
+
+                    // Close SignalR connection if it exists
+                    if (this.connection) {
+                        this.connection.stop().catch(error => {
+                            console.error('Error stopping SignalR connection:', error);
+                        });
+                        this.connection = null;
+                    }
+
+                    // Clear all application state
+                    this.username = '';
+                    this.userLanguage = 'en';
+                    this.chats = {};
+                    this.currentChatId = null;
+                    this.currentView = 'chats-list';
+                    this.ready = false;
+                    this.appReady = false;
+
+                    // Show session timeout screen
+                    this.showSessionTimeout = true;
+                    this.showDisclaimer = false;
+                    this.showLanguageSelection = false;
+                    this.showFailure = false;
+                },
+
+                refreshPage: function () {
+                    // Refresh the entire page to restart the application
+                    window.location.reload();
+                },
+
+                getUserLanguageName: function () {
+                    // Get the display name for the user's language
+                    const lang = this.supportedLanguages.find(l => l.code === this.userLanguage);
+                    return lang ? lang.name : this.userLanguage.toUpperCase();
+                },
+
+                // Debug function to test SignalR connectivity
+                testSignalRConnection: function() {
+                    console.log('Testing SignalR connection...');
+                    console.log('Connection state:', this.connection ? this.connection.connectionState : 'No connection');
+                    console.log('Connection ID:', this.myConnectionId);
+                    console.log('Username:', this.username);
+                    console.log('Current chats:', this.chats);
+                    
+                    // Test if we can manually trigger onNewMessage
+                    const testMessage = {
+                        SourceUserId: 'testuser',
+                        TargetUserId: this.username,
+                        OriginalText: 'Test message',
+                        TranslatedText: 'Test message translated',
+                        SourceLanguage: 'en',
+                        TargetLanguage: this.userLanguage,
+                        TimeStamp: new Date().toISOString()
+                    };
+                    
+                    console.log('Manually triggering onNewMessage with test data...');
+                    this.onNewMessage(testMessage);
+                },
+
+                fetchUserProfile: async function (username) {
+                    try {
+                        // Fetch user profile details including language
+                        const response = await fetch(`${window.location.origin}/api/GetChatMembers/${username}`);
+
+                        if (response.ok) {
+                            const membersDict = await response.json();
+                            // Convert dictionary to array of values and find the user's profile
+                            const members = Object.values(membersDict);
+                            const userProfile = members.find(member => member.userId === username || member.UserId === username);
+
+                            if (userProfile) {
+                                return {
+                                    userId: userProfile.userId || userProfile.UserId,
+                                    language: userProfile.language || userProfile.Language,
+                                    connectionId: userProfile.connectionId || userProfile.ConnectionId
+                                };
+                            }
+                        }
+
+                        return null; // User not found or offline
+                    } catch (error) {
+                        console.error('Error fetching user profile:', error);
+                        return null;
+                    }
+                },
+
+                // ...existing code...
+            }, mounted: async function () {
+                // Ensure the disclaimer shows first when the app loads
+                this.showDisclaimer = true;
+                this.showLanguageSelection = false;
+                this.showFailure = false;
+                this.appReady = false;
+
+                // Load supported languages from backend
+                await this.loadSupportedLanguages();        // Store references to event handlers for cleanup
+                this.beforeUnloadHandler = (event) => {
+                    // Call deleteUser function to clean up backend state
+                    if (this.username && !this.isDemoMode) {
+                        // Use sendBeacon for reliable cleanup during page unload
+                        const deleteUrl = `${window.location.origin}/api/DeleteUser/${this.username}`;
+                        navigator.sendBeacon(deleteUrl);
+                    }
+                }; this.visibilityChangeHandler = () => {
+                    // Only clean up user when the page is actually being unloaded
+                    // Don't clean up on simple tab switches or window minimization
+                    if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
+                        // Set a timeout to check if the user comes back within a reasonable time
+                        // This prevents premature cleanup when users just switch tabs briefly
+                        this.visibilityTimeout = setTimeout(() => {
+                            // Only delete if the tab is still hidden after 30 minutes
+                            if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
+                                this.handleSessionTimeout();
+                            }
+                        }, 1800000); // 30 minutes (30 * 60 * 1000)
+                    } else if (document.visibilityState === 'visible' && this.visibilityTimeout) {
+                        // User came back, cancel the cleanup timeout
+                        clearTimeout(this.visibilityTimeout);
+                        this.visibilityTimeout = null;
+                    }
+                };// Add beforeunload event listener to clean up user when app is closed
+                window.addEventListener('beforeunload', this.beforeUnloadHandler);
+
+                // Also handle visibility change (when tab becomes hidden)
+                document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+            }, beforeDestroy: function () {
+                // Clean up event listeners and user state
+                if (this.username && !this.isDemoMode) {
+                    this.deleteUser();
                 }
-              }
-            }
-          }
 
-          // Fallback: show translated indicator with target language
-          const langName = this.supportedLanguages.find(l => l.code === targetLanguage);
-          const langDisplayName = langName ? langName.name : targetLanguage.toUpperCase();
-          return `[${langDisplayName}: ${text}]`;
-        }, deleteUser: function () {
-          // Clean up user state when app is closed
-          if (this.username && !this.isDemoMode) {
-            try {
-              // Use fetch with keepalive for cleanup
-              fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
-                method: 'DELETE',
-                keepalive: true,
-                headers: {
-                  'Content-Type': 'application/json'
-                }
-              }).catch(error => {
-                console.error('Error cleaning up user:', error);
-              });
-            } catch (error) {
-              console.error('Error during user cleanup:', error);
-            }
-          }
-        }, loadSupportedLanguages: async function () {
-          try {
-            this.isLoadingLanguages = true;
-            const response = await fetch(`${window.location.origin}/api/supportedlanguages`);
-
-            if (response.ok) {
-              const data = await response.json();
-
-              // Parse Azure Translator API response format
-              if (data.translation) {
-                const languages = [];
-                for (const [code, details] of Object.entries(data.translation)) {
-                  languages.push({
-                    code: code,
-                    name: details.name,
-                    nativeName: details.nativeName || details.name
-                  });
+                // Clear any pending visibility timeout
+                if (this.visibilityTimeout) {
+                    clearTimeout(this.visibilityTimeout);
+                    this.visibilityTimeout = null;
                 }
 
-                // Sort languages alphabetically by name
-                languages.sort((a, b) => a.name.localeCompare(b.name));
-                this.supportedLanguages = languages;
-              }
-            } else {
-              console.error('Failed to load supported languages:', response.status);
-              // Fall back to a minimal set of languages
-              this.supportedLanguages = [
-                { code: 'en', name: 'English', nativeName: 'English' },
-                { code: 'es', name: 'Spanish', nativeName: 'Español' },
-                { code: 'fr', name: 'French', nativeName: 'Français' },
-                { code: 'de', name: 'German', nativeName: 'Deutsch' },
-                { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-                { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-                { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
-                { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-                { code: 'ko', name: 'Korean', nativeName: '한국어' },
-                { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
-              ];
+                // Remove event listeners (using stored references)
+                if (this.beforeUnloadHandler) {
+                    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+                }
+                if (this.visibilityChangeHandler) {
+                    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+                }
+            },
+
+            updated: function () {
+                // Auto-scroll to bottom when new messages are added in chat view
+                if (this.appReady && this.ready && this.currentView === 'chat') {
+                    this.$nextTick(() => {
+                        this.scrollToBottom();
+                    });
+                }
             }
-          } catch (error) {
-            console.error('Error loading supported languages:', error);
-            // Fall back to a minimal set of languages
-            this.supportedLanguages = [
-              { code: 'en', name: 'English', nativeName: 'English' },
-              { code: 'es', name: 'Spanish', nativeName: 'Español' },
-              { code: 'fr', name: 'French', nativeName: 'Français' },
-              { code: 'de', name: 'German', nativeName: 'Deutsch' },
-              { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-              { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-              { code: 'zh', name: 'Chinese (Simplified)', nativeName: '中文 (简体)' },
-              { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-              { code: 'ko', name: 'Korean', nativeName: '한국어' },
-              { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
-            ];
-          } finally {
-            this.isLoadingLanguages = false;
-          }
-        },
-        handleSessionTimeout: function () {
-          console.log('Session timeout - cleaning up user and showing timeout screen');
-          
-          // Clean up user state
-          if (this.username && !this.isDemoMode) {
-            this.deleteUser();
-          }
-          
-          // Close SignalR connection if it exists
-          if (this.connection) {
-            this.connection.stop().catch(error => {
-              console.error('Error stopping SignalR connection:', error);
-            });
-            this.connection = null;
-          }
-          
-          // Clear all application state
-          this.username = '';
-          this.userLanguage = 'en';
-          this.chats = {};
-          this.currentChatId = null;
-          this.currentView = 'chats-list';
-          this.ready = false;
-          this.appReady = false;
-          
-          // Show session timeout screen
-          this.showSessionTimeout = true;
-          this.showDisclaimer = false;
-          this.showLanguageSelection = false;
-          this.showFailure = false;
-        },
-
-        refreshPage: function () {
-          // Refresh the entire page to restart the application
-          window.location.reload();
-        },
-
-        // ...existing code...
-      }, mounted: async function () {
-        // Ensure the disclaimer shows first when the app loads
-        this.showDisclaimer = true;
-        this.showLanguageSelection = false;
-        this.showFailure = false;
-        this.appReady = false;
-
-        // Load supported languages from backend
-        await this.loadSupportedLanguages();        // Store references to event handlers for cleanup
-        this.beforeUnloadHandler = (event) => {
-          // Call deleteUser function to clean up backend state
-          if (this.username && !this.isDemoMode) {
-            // Use sendBeacon for reliable cleanup during page unload
-            const deleteUrl = `${window.location.origin}/api/DeleteUser/${this.username}`;
-            navigator.sendBeacon(deleteUrl);
-          }
-        };        this.visibilityChangeHandler = () => {
-          // Only clean up user when the page is actually being unloaded
-          // Don't clean up on simple tab switches or window minimization
-          if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-            // Set a timeout to check if the user comes back within a reasonable time
-            // This prevents premature cleanup when users just switch tabs briefly
-            this.visibilityTimeout = setTimeout(() => {
-              // Only delete if the tab is still hidden after 30 minutes
-              if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-                this.handleSessionTimeout();
-              }
-            }, 1800000); // 30 minutes (30 * 60 * 1000)
-          } else if (document.visibilityState === 'visible' && this.visibilityTimeout) {
-            // User came back, cancel the cleanup timeout
-            clearTimeout(this.visibilityTimeout);
-            this.visibilityTimeout = null;
-          }
-        };// Add beforeunload event listener to clean up user when app is closed
-        window.addEventListener('beforeunload', this.beforeUnloadHandler);
-
-        // Also handle visibility change (when tab becomes hidden)
-        document.addEventListener('visibilitychange', this.visibilityChangeHandler);
-      },      beforeDestroy: function () {
-        // Clean up event listeners and user state
-        if (this.username && !this.isDemoMode) {
-          this.deleteUser();
-        }
-
-        // Clear any pending visibility timeout
-        if (this.visibilityTimeout) {
-          clearTimeout(this.visibilityTimeout);
-          this.visibilityTimeout = null;
-        }
-
-        // Remove event listeners (using stored references)
-        if (this.beforeUnloadHandler) {
-          window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        }
-        if (this.visibilityChangeHandler) {
-          document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
-        }
-      },
-
-      updated: function () {
-        // Auto-scroll to bottom when new messages are added in chat view
-        if (this.appReady && this.ready && this.currentView === 'chat') {
-          this.$nextTick(() => {
-            this.scrollToBottom();
-          });
-        }
-      }
-    });
-  </script>
+        });
+    </script>
 </body>
 
 </html>

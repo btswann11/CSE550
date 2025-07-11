@@ -23,14 +23,14 @@ public class ChatMember
         Language = string.Empty;
         ConnectionId = string.Empty;
     }
-    public ChatMember(string groupName, string userId, string language)
+    public ChatMember(string groupName, string userId, string language, string? connectionId)
     {
         PartitionKey = groupName ?? throw new ArgumentNullException(nameof(groupName));
         RowKey = userId ?? throw new ArgumentNullException(nameof(userId));
         GroupName = groupName;
         UserId = userId;
         Language = language ?? throw new ArgumentNullException(nameof(language));
-        ConnectionId = string.Empty;
+        ConnectionId = connectionId ?? string.Empty;
         Timestamp = DateTimeOffset.UtcNow;
     }
 

@@ -5,6 +5,8 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.SignalRService;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using System.Net;
+using Microsoft.Azure.Functions.Worker.SignalRService;
 
 namespace UniversalTranslator;
 
@@ -26,7 +28,7 @@ public class Functions
     private readonly TranslationService _translationService;
     private readonly ILogger<Functions> _logger;
 
-    public Functions(StorageService storageService, TranslationService translationService, ILogger<Functions> logger)
+    public Functions(StorageService storageService, TranslationService translationService, ILogger<Functions> logger, IServiceProvider serviceProvider)
     {
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _translationService = translationService ?? throw new ArgumentNullException(nameof(translationService));
@@ -75,7 +77,7 @@ public class Functions
             return errorResponse;
         }
     }
-    
+
 
     [Function("SendMessageToUser")]
     public async Task<SendMessageOutput> SendMessageToUser(
@@ -127,13 +129,13 @@ public class Functions
                 return new SendMessageOutput { HttpResponse = errorResponse };
             }
 
-            var sourceLanguage = chatMembers[userMessage.SourceUserId].Language;
-            var targetLanguage = chatMembers[userMessage.TargetUserId].Language;
+            var sourceUser = chatMembers[userMessage.SourceUserId];
+            var targetUser = chatMembers[userMessage.TargetUserId];
 
             // If source and target languages are the same, no translation is needed
-            var translatedText = sourceLanguage == targetLanguage
+            var translatedText = sourceUser.Language == targetUser.Language
             ? userMessage.Message
-            : await _translationService.TranslateAsync(userMessage.Message, sourceLanguage, targetLanguage);
+            : await _translationService.TranslateAsync(userMessage.Message, sourceUser.Language, targetUser.Language);
 
             // Create the response data
             var responseData = new
@@ -142,22 +144,20 @@ public class Functions
                 TranslatedText = translatedText,
                 SourceUserId = userMessage.SourceUserId,
                 TargetUserId = userMessage.TargetUserId,
-                SourceLanguage = sourceLanguage,
-                TargetLanguage = targetLanguage,
+                SourceLanguage = sourceUser.Language,
+                TargetLanguage = targetUser.Language,
                 GroupName = userMessage.GroupName,
                 TimeStamp = userMessage.TimeStamp
             };
 
             // Create HTTP response for the sender
             var httpResponse = req.CreateResponse(System.Net.HttpStatusCode.OK);
-            httpResponse.Headers.Add("Content-Type", "application/json");
-            await httpResponse.WriteStringAsync(JsonSerializer.Serialize(responseData));
+            await httpResponse.WriteAsJsonAsync(responseData);
 
             // Create SignalR message for the target user
             var signalRMessage = new SignalRMessageAction("newMessage")
             {
-                GroupName = userMessage.GroupName,
-                UserId = userMessage.TargetUserId,
+                ConnectionId = targetUser.ConnectionId,
                 Arguments = [responseData]
             };
 
@@ -211,7 +211,7 @@ public class Functions
 
     [Function("AddChatMember")]
     public async Task<HttpResponseData> AddChatMember(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
         try
         {
@@ -226,7 +226,7 @@ public class Functions
 
             var user = JsonSerializer.Deserialize<User>(requestBody);
 
-            if(!IsValiderUser(user, out var validationMessage))
+            if (!IsValiderUser(user, out var validationMessage))
             {
                 var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
                 await badResponse.WriteStringAsync(validationMessage);
@@ -242,7 +242,7 @@ public class Functions
                 return conflictResponse;
             }
 
-            var member = new ChatMember(user.GroupName, user.UserId, user.Language);
+            var member = new ChatMember(user.GroupName, user.UserId, user.Language, user.ConnectionId);
 
             await _storageService.AddChatMemberAsync(member);
 
@@ -318,7 +318,7 @@ public class Functions
 
     [Function("GetChatMembers")]
     public async Task<HttpResponseData> GetChatMembers(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "getchatmembers/{groupName}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getchatmembers/{groupName}")] HttpRequestData req,
         string groupName)
     {
         try
@@ -340,8 +340,7 @@ public class Functions
             }
 
             var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(members));
+            await response.WriteAsJsonAsync(members);
             return response;
         }
         catch (Exception ex)
@@ -378,7 +377,7 @@ public class Functions
         {
             _logger.LogError(ex, "Error occurred while checking if user '{Username}' is online", username);
             var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"An error occurred while checking username availability: {ex.Message}"); 
+            await errorResponse.WriteStringAsync($"An error occurred while checking username availability: {ex.Message}");
             return errorResponse;
         }
     }
@@ -418,5 +417,92 @@ public class Functions
             await errorResponse.WriteStringAsync($"An error occurred while deleting the user: {ex.Message}");
             return errorResponse;
         }
+    }
+
+    [Function("CreateUserProfile")]
+    public async Task<HttpResponseData> CreateUserProfile(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "createprofile")] HttpRequestData req)
+    {
+        try
+        {
+            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+
+            if (string.IsNullOrWhiteSpace(requestBody))
+            {
+                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Request body cannot be empty.");
+                return badResponse;
+            }
+
+            var user = JsonSerializer.Deserialize<User>(requestBody);
+
+            if (!IsValiderUser(user, out var validationMessage))
+            {
+                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync(validationMessage);
+                return badResponse;
+            }
+
+            // Check if user profile already exists by checking if they exist as a chat member with themselves
+            var existingMembers = await _storageService.GetChatMembersAsync(user.UserId);
+            if (existingMembers != null && existingMembers.ContainsKey(user.UserId))
+            {
+                var conflictResponse = req.CreateResponse(System.Net.HttpStatusCode.Conflict);
+                await conflictResponse.WriteStringAsync($"User profile '{user.UserId}' already exists.");
+                return conflictResponse;
+            }
+
+            // Create a chat member with themselves to establish the user profile
+            var selfChatMember = new ChatMember(user.UserId, user.UserId, user.Language, user.ConnectionId);
+            await _storageService.AddChatMemberAsync(selfChatMember);
+
+            var response = req.CreateResponse(System.Net.HttpStatusCode.Created);
+            await response.WriteStringAsync($"User profile '{user.UserId}' created successfully.");
+            return response;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON format in request body for CreateUserProfile");
+            var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync($"Invalid JSON format: {ex.Message}");
+            return badResponse;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 409)
+        {
+            _logger.LogWarning(ex, "Conflict occurred while creating user profile - user already exists");
+            var conflictResponse = req.CreateResponse(System.Net.HttpStatusCode.Conflict);
+            await conflictResponse.WriteStringAsync("User profile already exists.");
+            return conflictResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating user profile");
+            var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"An error occurred while creating the user profile: {ex.Message}");
+            return errorResponse;
+        }
+    }
+
+    [Function("negotiate")]
+    public async Task<HttpResponseData> Negotiate(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req,
+        [SignalRConnectionInfoInput(HubName = "chat")] SignalRConnectionInfo connectionInfo)
+    {
+        _logger.LogInformation("Negotiate endpoint called");
+        _logger.LogInformation($"SignalR ConnectionInfo: URL={connectionInfo.Url}, AccessToken exists={!string.IsNullOrEmpty(connectionInfo.AccessToken)}");
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+
+        // Add CORS headers
+        response.Headers.Add("Access-Control-Allow-Origin", "*");
+        response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        response.Headers.Add("Access-Control-Allow-Headers", "*");
+
+        // Log the connection info being returned
+        var connectionInfoJson = System.Text.Json.JsonSerializer.Serialize(connectionInfo, options: new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        _logger.LogInformation($"Returning connection info: {connectionInfoJson}");
+
+        await response.WriteAsJsonAsync(connectionInfo);
+        return response;
     }
 }
