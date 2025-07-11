@@ -2116,29 +2116,77 @@
                 this.beforeUnloadHandler = (event) => {
                     // Call deleteUser function to clean up backend state
                     if (this.username && !this.isDemoMode) {
-                        // Use sendBeacon for reliable cleanup during page unload
-                        const deleteUrl = `${window.location.origin}/api/DeleteUser/${this.username}`;
-                        navigator.sendBeacon(deleteUrl);
+                        // Use fetch with keepalive for reliable cleanup during page unload
+                        try {
+                            fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
+                                method: 'DELETE',
+                                keepalive: true,
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            }).catch(error => {
+                                console.error('Error cleaning up user on page unload:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error during user cleanup on page unload:', error);
+                        }
                     }
-                }; this.visibilityChangeHandler = () => {
-                    // Only clean up user when the page is actually being unloaded
-                    // Don't clean up on simple tab switches or window minimization
+                };                this.visibilityChangeHandler = () => {
                     if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-                        // Set a timeout to check if the user comes back within a reasonable time
+                        // Set a short timeout to check if the user comes back quickly
                         // This prevents premature cleanup when users just switch tabs briefly
                         this.visibilityTimeout = setTimeout(() => {
-                            // Only delete if the tab is still hidden after 30 minutes
+                            // Only delete if the tab is still hidden after 5 seconds
                             if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-                                this.handleSessionTimeout();
+                                console.log('Page hidden for 5 seconds, cleaning up user...');
+                                try {
+                                    fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
+                                        method: 'DELETE',
+                                        keepalive: true,
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        }
+                                    }).catch(error => {
+                                        console.error('Error cleaning up user on visibility change:', error);
+                                    });
+                                } catch (error) {
+                                    console.error('Error during user cleanup on visibility change:', error);
+                                }
                             }
-                        }, 1800000); // 30 minutes (30 * 60 * 1000)
+                        }, 5000); // 5 seconds
                     } else if (document.visibilityState === 'visible' && this.visibilityTimeout) {
                         // User came back, cancel the cleanup timeout
+                        console.log('Page visible again, canceling cleanup timeout');
                         clearTimeout(this.visibilityTimeout);
                         this.visibilityTimeout = null;
                     }
-                };// Add beforeunload event listener to clean up user when app is closed
+                };
+
+                // Add pagehide event listener for additional cleanup reliability
+                this.pageHideHandler = (event) => {
+                    if (this.username && !this.isDemoMode) {
+                        console.log('Page hide event triggered, cleaning up user...');
+                        try {
+                            fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
+                                method: 'DELETE',
+                                keepalive: true,
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            }).catch(error => {
+                                console.error('Error cleaning up user on page hide:', error);
+                            });
+                        } catch (error) {
+                            console.error('Error during user cleanup on page hide:', error);
+                        }
+                    }
+                };
+
+                // Add beforeunload event listener to clean up user when app is closed
                 window.addEventListener('beforeunload', this.beforeUnloadHandler);
+                
+                // Add pagehide event listener for additional reliability
+                window.addEventListener('pagehide', this.pageHideHandler);
 
                 // Also handle visibility change (when tab becomes hidden)
                 document.addEventListener('visibilitychange', this.visibilityChangeHandler);
@@ -2157,6 +2205,9 @@
                 // Remove event listeners (using stored references)
                 if (this.beforeUnloadHandler) {
                     window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+                }
+                if (this.pageHideHandler) {
+                    window.removeEventListener('pagehide', this.pageHideHandler);
                 }
                 if (this.visibilityChangeHandler) {
                     document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
