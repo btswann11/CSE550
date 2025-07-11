@@ -60,8 +60,6 @@ Create the `local.settings.json` file with the following content
     "UT_TRANSLATION_SERVICE_LOCATION": "eastus",
 
     "UT_CHATS_STORAGE_CONNECTION_STRING": "[TO_BE_PROVIDED]",
-    // each person will have their own table so we avoid conflicts 
-    // during local testing
     "UT_CHATS_TABLE_NAME": "utchats-<your-name>",
 
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",        
@@ -71,6 +69,7 @@ Create the `local.settings.json` file with the following content
 
 **⚠️ IMPORTANT NOTES:**
 
+- Replace `<your-name>` with your actual name or identifier to avoid conflicts during local testing. Each person will have their own backend table for storing chat data.
 - Replace `[TO_BE_PROVIDED]` values with the actual connection strings and keys I'll provide separately
 - **DO NOT commit this file to Git** - it contains sensitive information
 - The file is already in `.gitignore` to prevent accidental commits
@@ -248,22 +247,26 @@ When testing the web interface, it's essential to have your browser's developer 
 ### Common Error Patterns to Watch For
 
 **SignalR Connection Issues:**
+
 ```javascript
 Error: Failed to start the connection: Error: WebSocket failed to connect.
 ```
 
 **API Connection Issues:**
+
 ```javascript
 Error: Failed to fetch
 TypeError: NetworkError when attempting to fetch resource
 ```
 
 **CORS Issues:**
+
 ```javascript
 Access to fetch at 'http://localhost:7151/api/...' from origin 'null' has been blocked by CORS policy
 ```
 
 **Translation Service Issues:**
+
 ```javascript
 Error: Translation service returned error: [specific error message]
 ```
