@@ -273,7 +273,7 @@ Error: Translation service returned error: [specific error message]
 
 ### Testing Workflow with Developer Tools
 
-1. **Open the application** in your browser: `http://localhost:7151/api/content/index.html`
+1. **Open the application** in your browser: `http://localhost:7151/api/index`
 2. **Open Developer Tools** immediately (F12)
 3. **Clear the console** (click the clear icon or press Ctrl+L)
 4. **Perform your test actions** (join chat, send messages, etc.)
