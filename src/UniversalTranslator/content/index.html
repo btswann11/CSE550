@@ -240,6 +240,17 @@
             color: #28a745;
         }
 
+        .message-timestamp {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message-bubble.received .message-timestamp {
+            text-align: left;
+        }
+
         .message-status.failed {
             color: #dc3545;
         }
@@ -835,6 +846,10 @@
                                                 <span v-if="message.status === 'failed'" class="status-icon">✗</span>
                                                 {{ getStatusText(message.status || 'sending') }}
                                             </div>
+                                            <!-- Timestamp for sent messages -->
+                                            <div class="message-timestamp">
+                                                {{ formatMessageTime(message.timestamp) }}
+                                            </div>
                                         </div>
 
                                         <!-- For received messages: show translated text (what we see) and optionally original text above -->
@@ -847,6 +862,10 @@
                                             <!-- Show the main message text (translated or original) -->
                                             <div class="message-text">
                                                 {{ message.TranslatedText || message.Text || message.text }}
+                                            </div>
+                                            <!-- Timestamp for received messages -->
+                                            <div class="message-timestamp">
+                                                {{ formatMessageTime(message.timestamp) }}
                                             </div>
                                         </div>
                                     </div>
@@ -1329,6 +1348,27 @@
                     if (diff < 3600000) return Math.floor(diff / 60000) + 'm'; // Less than 1 hour
                     if (diff < 86400000) return Math.floor(diff / 3600000) + 'h'; // Less than 1 day
                     return date.toLocaleDateString();
+                },
+
+                formatMessageTime: function (timestamp) {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp);
+                    const now = new Date();
+                    const diff = now - date;
+
+                    // For messages sent within the last 24 hours, show time
+                    if (diff < 86400000) {
+                        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    // For messages older than 24 hours, show date and time
+                    if (diff < 604800000) { // Within the last week
+                        return date.toLocaleDateString([], { weekday: 'short' }) + ' ' + 
+                               date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    // For older messages, show date
+                    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
                 }, sendNewMessage: function () {
                     if (this.newMessage.trim() && this.currentChatId) {
                         const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
