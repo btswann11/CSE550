@@ -818,7 +818,7 @@
                                         <div class="message-header">
                                             <strong>{{ message.Sender || message.sender || 'Unknown' }}</strong>
                                             <span
-                                                v-if="message.SourceLanguage && message.SourceLanguage !== this.userLanguage"
+                                                v-if="!isMyMessage(message) && message.SourceLanguage && message.SourceLanguage !== this.userLanguage"
                                                 class="badge badge-light ml-1"
                                                 style="font-size: 0.65rem; opacity: 0.8;">
                                                 {{ getLanguageCode(message.SourceLanguage) }}
