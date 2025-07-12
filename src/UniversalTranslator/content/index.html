@@ -125,6 +125,33 @@
             padding: 40px;
         }
 
+        .inactivity-warning-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        /* Adjust app container when warning is showing */
+        .app-container {
+            transition: margin-top 0.3s ease;
+        }
+
+        .inactivity-warning-showing .app-container {
+            margin-top: 60px; /* Adjust based on warning banner height */
+        }
+
         * {
             box-sizing: border-box;
         }
@@ -623,14 +650,14 @@
 </head>
 
 <body>
-    <div id="app">
+    <div id="app" :class="{ 'inactivity-warning-showing': showInactivityWarning }">
         <div class="app-container">
             <!-- Disclaimer Modal -->
             <div v-if="showDisclaimer" class="disclaimer-modal">
                 <div class="disclaimer-content">
                     <h4 class="mb-3">Universal Translator Chat - Important Notice</h4>
                     <div class="alert alert-warning">
-                        <strong>Privacy & Translation Notice:</strong>
+                        <strong>Privacy, Translation & Age Verification Notice:</strong>
                     </div>
                     <p><strong>Please read carefully before proceeding:</strong></p>
                     <ul class="text-left">
@@ -639,11 +666,12 @@
                         <li><strong>Do not send sensitive or confidential information</strong> through this chat</li>
                         <li>Translation accuracy may vary - <strong>not all translations may be accurate</strong></li>
                         <li>This is a demonstration service and should not be used for critical communications</li>
+                        <li><strong>You must be 18 years of age or older</strong> to use this service</li>
                     </ul>
                     <p class="mt-3">
                         <strong>
-                            By clicking "Accept", you certify that you understand these limitations and agree to
-                            use this service responsibly.
+                            By clicking "Accept", you certify that you are 18 years of age or older, 
+                            understand these limitations, and agree to use this service responsibly.
                         </strong>
                     </p>
                     <div class="mt-4">
@@ -692,7 +720,7 @@
                 <div class="text-center">
                     <div class="alert alert-danger">
                         <h2>Access Denied</h2>
-                        <p class="lead">You must accept the terms and conditions to use this chat service.</p>
+                        <p class="lead">You must accept the terms and conditions and be 18 years of age or older to use this chat service.</p>
                         <p>Please refresh the page if you change your mind.</p>
                     </div>
                 </div>
@@ -707,6 +735,15 @@
                         <p>Please refresh the page to start a new session.</p>
                         <button @click="refreshPage" class="btn btn-primary mt-3">Refresh Page</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Inactivity Warning Banner -->
+            <div v-if="showInactivityWarning && appReady" class="inactivity-warning-banner">
+                <div class="alert alert-warning mb-0" style="border-radius: 0;">
+                    <strong>⚠️ Inactivity Notice:</strong> Your session will timeout in 5 minutes due to inactivity. 
+                    Move your mouse or click anywhere to stay active.
+                    <button @click="resetInactivityTimer" class="btn btn-sm btn-outline-warning ml-2">Stay Active</button>
                 </div>
             </div><!-- Chats List Screen -->
             <div v-if="appReady && currentView === 'chats-list'" class="container-fluid d-flex flex-column"
@@ -963,7 +1000,12 @@
                     messageCounter: 0,
                     connection: null,
                     isDemoMode: false, // Flag to indicate demo mode vs live mode
-                    visibilityTimeout: null // Timeout for delayed user cleanup
+                    visibilityTimeout: null, // Timeout for delayed user cleanup
+                    inactivityTimer: null, // Timer for 30-minute inactivity detection
+                    lastUserActivity: null, // Timestamp of last user activity
+                    inactivityTimeoutDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
+                    showInactivityWarning: false, // Show warning before timeout
+                    inactivityWarningTimer: null // Timer for showing warning
                 };
             },
             methods: {
@@ -1001,12 +1043,15 @@
                                 return;
                             }
 
-                            // Username is available, set up user but don't create backend profile yet
                             this.username = this.setupUsername.trim();
                             this.userLanguage = this.setupLanguage;
                             this.showLanguageSelection = false;
                             this.appReady = true;
                             this.currentView = 'chats-list';
+
+                            // Set up activity listeners and start inactivity timer
+                            this.setupActivityListeners();
+                            this.startInactivityTimer();
 
                             // In demo mode, skip SignalR connection
                             if (!this.isDemoMode) {
@@ -1157,6 +1202,9 @@
                             console.log(`User ${this.username} profile created with connection ID: ${this.myConnectionId}`);
                             // Profile created successfully, user is now fully registered
                             this.ready = true;
+                            
+                            // Start inactivity timer now that user is fully registered
+                            this.startInactivityTimer();
                         } else if (createProfileResponse.status === 409) {
                             // User already exists - this shouldn't happen since we checked earlier
                             console.error(`User ${this.username} already exists - conflict detected during registration`);
@@ -1244,6 +1292,9 @@
 
                 // Chat management methods
                 openChat: function (chatId) {
+                    // Reset inactivity timer since user is actively using the app
+                    this.resetInactivityTimer();
+                    
                     this.currentChatId = chatId;
                     this.currentView = 'chat';
                     if (this.chats[chatId]) {
@@ -1259,6 +1310,9 @@
                     this.currentChatId = null;
                 },
                 createNewChat: async function () {
+                    // Reset inactivity timer since user is actively using the app
+                    this.resetInactivityTimer();
+                    
                     const otherUser = this.newChatUsername.trim();
                     if (otherUser && otherUser !== this.username) {
                         this.newChatError = '';
@@ -1381,8 +1435,11 @@
 
                     // For older messages, show date
                     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                }, sendNewMessage: function () {
+                },                sendNewMessage: function () {
                     if (this.newMessage.trim() && this.currentChatId) {
+                        // Reset inactivity timer since user is actively using the app
+                        this.resetInactivityTimer();
+                        
                         const otherUser = this.getChatDisplayName(this.chats[this.currentChatId]);
                         if (this.isDemoMode) {                // Demo mode - local simulation
                             const message = {
@@ -2065,6 +2122,9 @@
                 handleSessionTimeout: function () {
                     console.log('Session timeout - cleaning up user and showing timeout screen');
 
+                    // Stop inactivity timer
+                    this.stopInactivityTimer();
+
                     // Clean up user state
                     if (this.username && !this.isDemoMode) {
                         this.deleteUser();
@@ -2155,6 +2215,85 @@
                     }
                 },
 
+                // User activity tracking methods
+                startInactivityTimer: function () {
+                    console.log('Starting 30-minute inactivity timer');
+                    this.lastUserActivity = Date.now();
+                    
+                    // Clear existing timers if any
+                    if (this.inactivityTimer) {
+                        clearTimeout(this.inactivityTimer);
+                    }
+                    if (this.inactivityWarningTimer) {
+                        clearTimeout(this.inactivityWarningTimer);
+                    }
+                    
+                    // Hide any existing warning
+                    this.showInactivityWarning = false;
+                    
+                    // Set warning timer for 25 minutes (5 minutes before timeout)
+                    this.inactivityWarningTimer = setTimeout(() => {
+                        console.log('25-minute mark reached - showing inactivity warning');
+                        this.showInactivityWarning = true;
+                    }, (this.inactivityTimeoutDuration - (5 * 60 * 1000))); // 25 minutes
+                    
+                    // Set 30-minute inactivity timer
+                    this.inactivityTimer = setTimeout(() => {
+                        console.log('30-minute inactivity timeout reached - showing session timeout');
+                        this.handleSessionTimeout();
+                    }, this.inactivityTimeoutDuration);
+                },
+
+                resetInactivityTimer: function () {
+                    // Reset the inactivity timer when user is active
+                    this.lastUserActivity = Date.now();
+                    
+                    // Hide warning if showing
+                    this.showInactivityWarning = false;
+                    
+                    if (this.inactivityTimer) {
+                        clearTimeout(this.inactivityTimer);
+                        this.inactivityTimer = null;
+                    }
+                    
+                    if (this.inactivityWarningTimer) {
+                        clearTimeout(this.inactivityWarningTimer);
+                        this.inactivityWarningTimer = null;
+                    }
+                    
+                    // Only restart timer if user is logged in and not in demo mode
+                    if (this.username && this.appReady && !this.isDemoMode) {
+                        this.startInactivityTimer();
+                    }
+                },
+
+                stopInactivityTimer: function () {
+                    console.log('Stopping inactivity timer');
+                    if (this.inactivityTimer) {
+                        clearTimeout(this.inactivityTimer);
+                        this.inactivityTimer = null;
+                    }
+                    if (this.inactivityWarningTimer) {
+                        clearTimeout(this.inactivityWarningTimer);
+                        this.inactivityWarningTimer = null;
+                    }
+                    this.showInactivityWarning = false;
+                },
+
+                setupActivityListeners: function () {
+                    // Track user activity to reset inactivity timer
+                    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+                    
+                    activityEvents.forEach(event => {
+                        document.addEventListener(event, () => {
+                            // Only reset timer if enough time has passed to avoid excessive resets
+                            if (!this.lastUserActivity || (Date.now() - this.lastUserActivity) > 10000) { // 10 seconds
+                                this.resetInactivityTimer();
+                            }
+                        }, true);
+                    });
+                },
+
                 // ...existing code...
             }, mounted: async function () {
                 // Ensure the disclaimer shows first when the app loads
@@ -2185,12 +2324,18 @@
                     }
                 };                this.visibilityChangeHandler = () => {
                     if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-                        // Set a short timeout to check if the user comes back quickly
-                        // This prevents premature cleanup when users just switch tabs briefly
+                        // When page becomes hidden, pause the inactivity timer but don't delete user
+                        // User might just be switching tabs temporarily
+                        console.log('Page hidden - pausing inactivity timer');
+                        this.stopInactivityTimer();
+                        
+                        // Set a longer timeout (5 minutes) before considering this as potentially closing the browser
+                        // This is much more reasonable than 5 seconds
                         this.visibilityTimeout = setTimeout(() => {
-                            // Only delete if the tab is still hidden after 5 seconds
+                            // Only consider cleanup if page is still hidden after 5 minutes
+                            // This likely means the user closed the tab/browser or left for an extended period
                             if (document.visibilityState === 'hidden' && this.username && !this.isDemoMode) {
-                                console.log('Page hidden for 5 seconds, cleaning up user...');
+                                console.log('Page hidden for 5 minutes - likely closed browser/tab, cleaning up user...');
                                 try {
                                     fetch(`${window.location.origin}/api/DeleteUser/${this.username}`, {
                                         method: 'DELETE',
@@ -2199,18 +2344,23 @@
                                             'Content-Type': 'application/json'
                                         }
                                     }).catch(error => {
-                                        console.error('Error cleaning up user on visibility change:', error);
+                                        console.error('Error cleaning up user on extended visibility change:', error);
                                     });
                                 } catch (error) {
-                                    console.error('Error during user cleanup on visibility change:', error);
+                                    console.error('Error during user cleanup on extended visibility change:', error);
                                 }
                             }
-                        }, 5000); // 5 seconds
-                    } else if (document.visibilityState === 'visible' && this.visibilityTimeout) {
-                        // User came back, cancel the cleanup timeout
-                        console.log('Page visible again, canceling cleanup timeout');
-                        clearTimeout(this.visibilityTimeout);
-                        this.visibilityTimeout = null;
+                        }, 5 * 60 * 1000); // 5 minutes instead of 5 seconds
+                    } else if (document.visibilityState === 'visible' && this.username && !this.isDemoMode) {
+                        // User came back, cancel any cleanup timeout and resume inactivity timer
+                        console.log('Page visible again, resuming inactivity timer');
+                        if (this.visibilityTimeout) {
+                            clearTimeout(this.visibilityTimeout);
+                            this.visibilityTimeout = null;
+                        }
+                        
+                        // Resume inactivity tracking since user is back
+                        this.resetInactivityTimer();
                     }
                 };
 
@@ -2242,8 +2392,31 @@
 
                 // Also handle visibility change (when tab becomes hidden)
                 document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+
+                // Setup activity listeners for user activity tracking
+                this.setupActivityListeners();
             }, beforeDestroy: function () {
-                // Clean up event listeners and user state
+                // Stop inactivity timer
+                this.stopInactivityTimer();
+                
+                // Clean up visibility timeout
+                if (this.visibilityTimeout) {
+                    clearTimeout(this.visibilityTimeout);
+                    this.visibilityTimeout = null;
+                }
+                
+                // Remove event listeners
+                if (this.beforeUnloadHandler) {
+                    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+                }
+                if (this.pageHideHandler) {
+                    window.removeEventListener('pagehide', this.pageHideHandler);
+                }
+                if (this.visibilityChangeHandler) {
+                    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+                }
+                
+                // Clean up user state only on actual component destruction
                 if (this.username && !this.isDemoMode) {
                     this.deleteUser();
                 }
@@ -2264,6 +2437,9 @@
                 if (this.visibilityChangeHandler) {
                     document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
                 }
+
+                // Stop inactivity timer if running
+                this.stopInactivityTimer();
             },
 
             updated: function () {

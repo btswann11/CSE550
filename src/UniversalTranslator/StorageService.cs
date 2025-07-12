@@ -25,11 +25,16 @@ public class ChatMember
     }
     public ChatMember(string groupName, string userId, string language, string? connectionId)
     {
-        PartitionKey = groupName ?? throw new ArgumentNullException(nameof(groupName));
-        RowKey = userId ?? throw new ArgumentNullException(nameof(userId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupName, nameof(groupName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(language, nameof(language));
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionId, nameof(connectionId));
+
+        PartitionKey = groupName;
+        RowKey = userId;
         GroupName = groupName;
         UserId = userId;
-        Language = language ?? throw new ArgumentNullException(nameof(language));
+        Language = language;
         ConnectionId = connectionId ?? string.Empty;
         Timestamp = DateTimeOffset.UtcNow;
     }
@@ -44,7 +49,7 @@ public class ChatMember
     public ETag ETag { get; set; }
 }
 
-public class StorageService
+public class StorageService : IStorageService
 {
     private readonly TableClient _tableClient;
 
@@ -108,7 +113,7 @@ public class StorageService
     public async Task DeleteUserAsync(string userId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
-        
+
         var query = _tableClient.QueryAsync<ChatMember>(member => member.RowKey == userId);
         await foreach (var member in query)
         {
@@ -124,17 +129,6 @@ public class StorageService
         {
             results.Add(member);
         }
-        return results;
-    }
-
-    private static async Task<List<ChatMember>> ToUsersAsync(AsyncPageable<ChatMember> query)
-    {
-        var results = new List<ChatMember>();
-        await foreach (var member in query)
-        {
-            results.Add(member);
-        }
-
         return results;
     }
 }

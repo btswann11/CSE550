@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UniversalTranslator", "UniversalTranslator\UniversalTranslator.csproj", "{2E5D4A77-37EE-4FCD-87CE-3AB7CD3D08DF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniversalTranslator.UnitTests", "UniversalTranslator.UnitTests\UniversalTranslator.UnitTests.csproj", "{1A18A65A-EE77-407E-97D9-34DCF3CC80DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{2E5D4A77-37EE-4FCD-87CE-3AB7CD3D08DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E5D4A77-37EE-4FCD-87CE-3AB7CD3D08DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E5D4A77-37EE-4FCD-87CE-3AB7CD3D08DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A18A65A-EE77-407E-97D9-34DCF3CC80DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A18A65A-EE77-407E-97D9-34DCF3CC80DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A18A65A-EE77-407E-97D9-34DCF3CC80DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A18A65A-EE77-407E-97D9-34DCF3CC80DB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
