@@ -993,6 +993,12 @@
                                     this.isCheckingUsername = false;
                                     return;
                                 }
+                            } else {
+                                // If we get an error response, assume something went wrong with the check
+                                console.error('Error checking user profile:', existingProfileResponse.status, existingProfileResponse.statusText);
+                                this.setupUsernameError = 'Unable to verify username availability. Please try again.';
+                                this.isCheckingUsername = false;
+                                return;
                             }
 
                             // Username is available, set up user but don't create backend profile yet
@@ -1152,15 +1158,20 @@
                             // Profile created successfully, user is now fully registered
                             this.ready = true;
                         } else if (createProfileResponse.status === 409) {
-                            // User already exists (shouldn't happen in this flow, but handle gracefully)
-                            console.log(`User ${this.username} already exists, connection ID updated: ${this.myConnectionId}`);
-                            this.ready = true;
+                            // User already exists - this shouldn't happen since we checked earlier
+                            console.error(`User ${this.username} already exists - conflict detected during registration`);
+                            // Show error and go back to setup
+                            this.setupUsernameError = 'This username is already taken. Please choose a different one.';
+                            this.showLanguageSelection = true;
+                            this.appReady = false;
+                            this.ready = false;
                         } else {
-                            console.error('Failed to create user profile with connection ID');
+                            console.error('Failed to create user profile with connection ID:', createProfileResponse.status, createProfileResponse.statusText);
                             // Show error to user since they can't use the app without a profile
                             this.setupUsernameError = 'Unable to create user profile. Please try again.';
                             this.showLanguageSelection = true;
                             this.appReady = false;
+                            this.ready = false;
                         }
                     } catch (error) {
                         console.error('Error during user profile creation:', error);
@@ -1168,6 +1179,7 @@
                         this.setupUsernameError = 'Unable to create user profile. Please try again.';
                         this.showLanguageSelection = true;
                         this.appReady = false;
+                        this.ready = false;
                     }
                 },
 

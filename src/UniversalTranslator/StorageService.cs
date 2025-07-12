@@ -57,30 +57,30 @@ public class StorageService
     public async Task AddChatMemberAsync(ChatMember member)
     {
         ArgumentNullException.ThrowIfNull(member, nameof(member));
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(member.PartitionKey, nameof(member.PartitionKey));
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(member.RowKey, nameof(member.RowKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(member.PartitionKey, nameof(member.PartitionKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(member.RowKey, nameof(member.RowKey));
         await _tableClient.AddEntityAsync(member);
     }
 
     public async Task RemoveChatMemberAsync(string partitionKey, string rowKey)
     {
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(rowKey, nameof(rowKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(rowKey, nameof(rowKey));
 
         await _tableClient.DeleteEntityAsync(partitionKey, rowKey);
     }
 
     public async Task<ChatMember?> GetChatMemberAsync(string partitionKey, string rowKey)
     {
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(rowKey, nameof(rowKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(rowKey, nameof(rowKey));
 
         return await _tableClient.GetEntityAsync<ChatMember>(partitionKey, rowKey);
     }
 
     public async Task<IDictionary<string, ChatMember>> GetChatMembersAsync(string partitionKey)
     {
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
+        ArgumentException.ThrowIfNullOrWhiteSpace(partitionKey, nameof(partitionKey));
 
         var query = _tableClient.QueryAsync<ChatMember>(member => member.PartitionKey == partitionKey);
         var results = new List<ChatMember>();
@@ -93,7 +93,7 @@ public class StorageService
 
     public async Task<bool> IsUserOnlineAsync(string userId)
     {
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
 
         var query = _tableClient.QueryAsync<ChatMember>(member => member.RowKey == userId);
         var results = new List<ChatMember>();
@@ -107,7 +107,8 @@ public class StorageService
 
     public async Task DeleteUserAsync(string userId)
     {
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId, nameof(userId));
+        
         var query = _tableClient.QueryAsync<ChatMember>(member => member.RowKey == userId);
         await foreach (var member in query)
         {

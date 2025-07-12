@@ -158,7 +158,7 @@ public class Functions
             var signalRMessage = new SignalRMessageAction("newMessage")
             {
                 ConnectionId = targetUser.ConnectionId,
-                Arguments = [responseData]
+                Arguments = new object[] { responseData }
             };
 
             return new SendMessageOutput
@@ -504,5 +504,37 @@ public class Functions
 
         await response.WriteAsJsonAsync(connectionInfo);
         return response;
+    }
+
+    [Function("CheckProfile")]
+    public async Task<HttpResponseData> CheckProfile(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "checkprofile/{username}")] HttpRequestData req,
+        string username)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Username is required.");
+                return badResponse;
+            }
+
+            // Check if user profile exists by checking if they exist as a chat member with themselves
+            var existingMembers = await _storageService.GetChatMembersAsync(username);
+            bool userExists = existingMembers != null && existingMembers.ContainsKey(username);
+
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(JsonSerializer.Serialize(new { UserExists = userExists }));
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while checking if user profile exists for '{Username}'", username);
+            var errorResponse = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"An error occurred while checking user profile: {ex.Message}");
+            return errorResponse;
+        }
     }
 }
