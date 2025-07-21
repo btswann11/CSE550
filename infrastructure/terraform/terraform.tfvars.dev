@@ -1,0 +1,31 @@
+# Development Environment Configuration
+# This file contains environment-specific variables for development
+
+project_name = "cse550-universal-translator"
+environment  = "dev"
+location     = "East US"
+
+# Development-specific settings
+signalr_sku = {
+  name     = "Standard_S1"
+  capacity = 1
+}
+
+storage_account_tier     = "Standard"
+storage_replication_type = "LRS"
+
+function_app_sku          = "FC1"
+function_app_max_instances = 20
+function_app_memory_mb    = 1024
+
+# Use free tier for development
+cognitive_services_sku = "F0"
+
+# Development tags
+tags = {
+  Project     = "Universal Translator"
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+  Owner       = "CSE550"
+  Purpose     = "Development"
+}

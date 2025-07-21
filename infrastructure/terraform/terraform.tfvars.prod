@@ -1,0 +1,32 @@
+# Production Environment Configuration
+# This file contains environment-specific variables for production
+
+project_name = "cse550-universal-translator"
+environment  = "prod"
+location     = "East US"
+
+# Production-specific settings
+signalr_sku = {
+  name     = "Standard_S1"
+  capacity = 2
+}
+
+storage_account_tier     = "Standard"
+storage_replication_type = "GRS"
+
+function_app_sku          = "FC1"
+function_app_max_instances = 100
+function_app_memory_mb    = 2048
+
+# Use standard tier for production
+cognitive_services_sku = "S1"
+
+# Production tags
+tags = {
+  Project     = "Universal Translator"
+  Environment = "prod"
+  ManagedBy   = "Terraform"
+  Owner       = "CSE550"
+  Purpose     = "Production"
+  Backup      = "Required"
+}

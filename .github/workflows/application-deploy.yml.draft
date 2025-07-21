@@ -1,0 +1,242 @@
+name: 'Deploy Universal Translator - Full Stack'
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      deploy_infrastructure:
+        description: 'Deploy infrastructure changes'
+        required: true
+        default: true
+        type: boolean
+      deploy_application:
+        description: 'Deploy application code'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  TF_VERSION: '1.6.0'
+  DOTNET_VERSION: '8.0.x'
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+jobs:
+  # Job 1: Determine what needs to be deployed
+  detect-changes:
+    name: 'Detect Changes'
+    runs-on: ubuntu-latest
+    outputs:
+      infrastructure-changed: ${{ steps.changes.outputs.infrastructure }}
+      application-changed: ${{ steps.changes.outputs.application }}
+      environment: ${{ steps.determine-env.outputs.environment }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Environment
+        id: determine-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect Changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "infrastructure=${{ github.event.inputs.deploy_infrastructure }}" >> $GITHUB_OUTPUT
+            echo "application=${{ github.event.inputs.deploy_application }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For PR, detect changes but don't deploy
+            echo "infrastructure=false" >> $GITHUB_OUTPUT
+            echo "application=false" >> $GITHUB_OUTPUT
+          else
+            # For push events, check what changed
+            if git diff --name-only HEAD~1 HEAD | grep -E '^infrastructure/terraform/'; then
+              echo "infrastructure=true" >> $GITHUB_OUTPUT
+            else
+              echo "infrastructure=false" >> $GITHUB_OUTPUT
+            fi
+            
+            if git diff --name-only HEAD~1 HEAD | grep -E '^src/'; then
+              echo "application=true" >> $GITHUB_OUTPUT
+            else
+              echo "application=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # Job 2: Build and Test Application
+  build-and-test:
+    name: 'Build and Test Application'
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.application-changed == 'true' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore Dependencies
+        run: dotnet restore src/UniversalTranslator.sln
+
+      - name: Build Application
+        run: dotnet build src/UniversalTranslator.sln --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test src/UniversalTranslator.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/TestResults/**/*.xml'
+
+      - name: Publish Application
+        run: dotnet publish src/UniversalTranslator/UniversalTranslator.csproj --configuration Release --output ./publish --no-build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-app-${{ needs.detect-changes.outputs.environment }}
+          path: ./publish/
+          retention-days: 30
+
+  # Job 3: Terraform Plan
+  terraform-plan:
+    name: 'Terraform Plan'
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.infrastructure-changed == 'true' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.TERRAFORM_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TERRAFORM_CONTAINER_NAME }}" \
+            -backend-config="key=${{ needs.detect-changes.outputs.environment }}/terraform.tfstate" \
+            -backend-config="resource_group_name=${{ secrets.TERRAFORM_RESOURCE_GROUP }}"
+
+      - name: Terraform Format Check
+        working-directory: infrastructure/terraform
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        working-directory: infrastructure/terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: infrastructure/terraform
+        run: |
+          terraform plan \
+            -var-file="terraform.tfvars.${{ needs.detect-changes.outputs.environment }}" \
+            -out=tfplan \
+            -detailed-exitcode
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-changes.outputs.environment }}
+          path: infrastructure/terraform/tfplan
+          retention-days: 5
+
+  # Job 4: Deploy Infrastructure
+  deploy-infrastructure:
+    name: 'Deploy Infrastructure'
+    runs-on: ubuntu-latest
+    needs: [detect-changes, terraform-plan]
+    if: needs.detect-changes.outputs.infrastructure-changed == 'true' && github.event_name != 'pull_request'
+    environment: 
+      name: ${{ needs.detect-changes.outputs.environment }}-infrastructure
+    outputs:
+      function_app_name: ${{ steps.terraform-output.outputs.function_app_name }}
+      resource_group_name: ${{ steps.terraform-output.outputs.resource_group_name }}
+      storage_connection_string: ${{ steps.terraform-output.outputs.storage_connection_string }}
+      signalr_connection_string: ${{ steps.terraform-output.outputs.signalr_connection_string }}
+      cognitive_services_key: ${{ steps.terraform-output.outputs.cognitive_services_key }}
+      cognitive_services_endpoint: ${{ steps.terraform-output.outputs.cognitive_services_endpoint }}
+      cognitive_services_location: ${{ steps.terraform-output.outputs.cognitive_services_location }}
+      storage_table_name: ${{ steps.terraform-output.outputs.storage_table_name }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-changes.outputs.environment }}
+          path: infrastructure/terraform/
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform
+        run: |
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.TERRAFORM_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TERRAFORM_CONTAINER_NAME }}" \
+            -backend-config="key=${{ needs.detect-changes.outputs.environment }}/terraform.tfstate" \
+            -backend-config="resource_group_name=${{ secrets.TERRAFORM_RESOURCE_GROUP }}"
+
+      - name: Terraform Apply
+        working-directory: infrastructure/terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Output
+        id: terraform-output
+        working-directory: infrastructure/terraform
+        run: |
+          echo "function_app_name=$(terraform output -raw function_app_name)" >> $GITHUB_OUTPUT
+          echo "resource_group_name=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
+          echo "storage_connection_string=$(terraform output -raw storage_account_connection_string)" >> $GITHUB_OUTPUT
+          echo "signalr_connection_string=$(terraform output -raw signalr_connection_string)" >> $GITHUB_OUTPUT
+          echo "cognitive_services_key=$(terraform output -raw cognitive_services_key)" >> $GITHUB_OUTPUT
+          echo "cognitive_services_endpoint=$(terraform output -raw cognitive_services_endpoint)" >> $GITHUB_OUTPUT
+          echo "cognitive_services_location=$(terraform output -raw cognitive_services_location)" >> $GITHUB_OUTPUT
+          echo "storage_table_name=$(terraform output -raw storage_table_name)" >> $GITHUB_OUTPUT
+
+  # Job 5: Get Infrastructure Info

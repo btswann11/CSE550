@@ -1,0 +1,69 @@
+using System.Diagnostics.CodeAnalysis;
+
+using Azure.Data.Tables;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Text.Json;
+using UniversalTranslator;
+
+namespace UniversalTranslator;
+
+[ExcludeFromCodeCoverage]
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = FunctionsApplication.CreateBuilder(args);
+
+        builder.ConfigureFunctionsWebApplication();
+
+        // Configure JSON options globally
+        builder.Services.Configure<JsonSerializerOptions>(options =>
+        {
+            options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            options.WriteIndented = false;
+            options.PropertyNameCaseInsensitive = true;
+        });
+
+        builder.Services
+               .AddSingleton<IStorageService, StorageService>()
+               .AddCors(options =>
+               {
+                   options.AddDefaultPolicy(policy =>
+                   {
+                       policy.AllowAnyOrigin()
+                             .AllowAnyHeader()
+                             .AllowAnyMethod();
+                   });
+               })
+               .AddSingleton<TableClient>(sp => new(
+                        Environment.GetEnvironmentVariable(Constants.ConnectionStringKey)
+                            ?? throw new InvalidOperationException($"{Constants.ConnectionStringKey} environment variable is not set.")
+                      , Environment.GetEnvironmentVariable(Constants.ChatsTableNameKey)
+                            ?? throw new InvalidOperationException($"{Constants.ChatsTableNameKey} environment variable is not set."))
+               )
+               .AddHttpClient<ITranslationService, TranslationService>(client =>
+               {
+                   var baseUri = Environment.GetEnvironmentVariable(Constants.TranslationServiceBaseUrlKey)
+                                     ?? throw new InvalidOperationException($"{Constants.TranslationServiceBaseUrlKey} environment variable is not set.");
+                   client.BaseAddress = new Uri(baseUri);
+                   client.DefaultRequestHeaders
+                            .Add("Ocp-Apim-Subscription-Key"
+                                , Environment.GetEnvironmentVariable(Constants.TranslationServiceApiKey)
+                                ?? throw new InvalidOperationException($"{Constants.TranslationServiceApiKey} environment variable is not set."));
+
+                   client.DefaultRequestHeaders
+                             .Add("Ocp-Apim-Subscription-Region", Environment.GetEnvironmentVariable(Constants.TranslationServiceLocationKey)
+                             ?? throw new InvalidOperationException($"{Constants.TranslationServiceLocationKey} environment variable is not set."));
+               });
+
+        builder.Services
+            .AddApplicationInsightsTelemetryWorkerService()
+            .ConfigureFunctionsApplicationInsights();
+
+        builder.Build().Run();
+    }
+}
